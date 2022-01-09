@@ -1,0 +1,3 @@
+#!/bin/sh
+./configure CXX=g++-11 $@
+#CXXFLAGS=-Xpreprocessor $@
