@@ -34,6 +34,8 @@ int codeHaplotypes(char in){
     return(9);
   if(in=='?')
     return(9);
+  if(in=='.')
+    return(9);
   return(-1);
 }
 

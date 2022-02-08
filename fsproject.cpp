@@ -71,7 +71,7 @@ FsProject::FsProject(std::string f,std::string d,bool verbose)
   ploidy=2;
   hpc=0;
   linkagemode=string("unlinked");
-  s12args=string("");
+  s12args=string("-X -Y");
   s1args=string("-in -iM --emfilesonly");
   s1minsnps=10000;// default: 10K
   s1snpfrac=0.1;// fraction of genome we will use for EM
@@ -4537,7 +4537,7 @@ int fsproject(int fsmode,int argc, char *argv[]) {
 	  }else{
 	    cout<<"SUGGESTIONS:"<<endl;
 	    cout<<"> cat "<<tcmdfile<<" | parallel --bar # for local execution in parallel"<<endl;
-	    cout<<"> qsub_run.sh -f "<<tcmdfile<<" -n "<<proj->recommendN()<<" -m "<<proj->recommendM()<<" # for qsub HPC systems -n <n> is the number of cores requested on each HPC node and -m <m> is the number of commands sent to each node (not core). These values are suggested to keep the total number of qsub jobs low ~(10-100)."<<endl;
+	    cout<<"> sbatch_array.sh -f "<<tcmdfile<<" -n "<<proj->recommendN()<<" -m "<<proj->recommendM()<<" # for SLURM-based HPC systems -n <n> is the number of cores requested on each HPC node and -m <m> is the number of commands sent to each node (not core). These values are suggested to keep the total number of jobs low ~(10-100)."<<endl;
 	  }
 	  if(texists!=NULL) {
 	    cout<<"IF IT WAS RUN ALREADY:"<<endl;

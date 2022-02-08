@@ -1,12 +1,15 @@
+## CC = /opt/homebrew/opt/llvm/bin/clang
+## CXX = $(CC)++
+
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS = fs mixPainter
 
 ##OPTIMIZATION = -O3 -lm -Wall -Wno-write-strings -mfpmath=sse -msse -msse2 -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fopenmp -Wno-unused-variable $(OPENMP_CXXFLAGS)
-OPTIMIZATION = -O3 -lm -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -Wno-unused-variable $(OPENMP_CXXFLAGS)
-fs_CXXFLAGS = $(OPTIMIZATION) -Wall
-fs_LDFLAGS = $(OPTIMIZATION) -static-libstdc++
+OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -Wno-unused-variable $(OPENMP_CXXFLAGS)
+fs_CXXFLAGS = $(OPTIMIZATION) -Wall ##  -fsanitize=leak
+fs_LDFLAGS = $(OPTIMIZATION) -lm -static-libstdc++
 
 mixPainter_CXXFLAGS = $(OPTIMIZATION) -Wall
 mixPainter_LDFLAGS = $(OPTIMIZATION) -static-libstdc++
@@ -15,4 +18,4 @@ all_SOURCES = fsproject.h fsproject.cpp fssettings.h fssettings.cpp fsutils.h fs
 fs_SOURCES = fs.cpp $(all_SOURCES)
 mixPainter_SOURCES = badpainter.cpp $(all_SOURCES)
 
-dist_noinst_SCRIPTS = scripts/finestructuregreedy.sh scripts/qsub_run.sh scripts/makeuniformrecfile.pl scripts/convertrecfile.pl scripts/chromopainter2chromopainterv2.pl scripts/phasescreen.pl scripts/phasesubsample.pl scripts/plink2chromopainter.pl scripts/impute2chromopainter.pl scripts/beagle2chromopainter.pl scripts/msms2cp.pl old-scripts/neaverage.pl Manual/manual.pdf Manual/manual.html examples/example1 examples/example2 examples/example3 examples/example4 LICENSE-FS LICENSE-CP
+dist_noinst_SCRIPTS = scripts/finestructuregreedy.sh scripts/qsub_array.sh scripts/sbatch_array.sh scripts/makeuniformrecfile.pl scripts/convertrecfile.pl scripts/idsFromChunkcounts.sh scripts/phasescreen.pl scripts/phasesubsample.pl scripts/impute2chromopainter.pl scripts/beagle2chromopainter.pl scripts/msms2cp.pl old-scripts/neaverage.pl old-scripts/chromopainter2chromopainterv2.pl Manual/manual.pdf Manual/manual.html examples/example1 examples/example2 examples/example3 examples/example4 LICENSE-FS LICENSE-CP
