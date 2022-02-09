@@ -761,6 +761,10 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
 		  total_squared_region_counts[i] = total_squared_region_counts[i] + back_prob[6][i];
 		  snp_info_measure_final[i] = snp_info_measure_final[i] + back_prob[7][i];
 		}
+
+	      for (i = 0; i < 8; i++)
+		free(back_prob[i]);
+	      free(back_prob);
 	    }
 	  if(Outfiles->usingFile[2]) fprintf(Outfiles->fout3," %.10lf %.10lf\n",N_e,MutProb_vec_new[0]);
 	  //if (estimate_mutationALL_ind==0) fprintf(fout3,"\n");
@@ -844,9 +848,6 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
 
 	  /* print props, lengths, counts, and differences: */
  	  if (finalrun) printSummary(m,num_regions_tot,copy_prob_pop,total_counts,total_lengths,total_differences,total_region_counts,total_squared_region_counts,Outfiles,Par);
-	  for (i = 0; i < 8; i++)
-	    free(back_prob[i]);
-	  free(back_prob);
 	}
       free(allelic_type_count_vec);
     }
