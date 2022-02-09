@@ -107,15 +107,41 @@ fs4 (finestructure) is written by Daniel Lawson (dan.lawson@bristol.ac.uk) COPYR
 
 ###############################
 
+How to install perl dependencies?
+
+#### Local install - not root privileges:
 ```{sh}
-## cp ~/code/pcapred.ref/inst/extdata/1000G_tinysubset.* .
+## NB: This requires a requirement to run perl scripts with `perl -Mlocal::lib /path/to/script.pl`
+perl -MCPAN -Mlocal::lib -e 'CPAN::install(Switch)'
+perl -MCPAN -Mlocal::lib -e 'CPAN::install(VCF)'
+```
+
+#### Global install - uses root privileges:
+```{sh}
+## NB: This allows running perl scripts with `/path/to/script.pl`
+sudo perl -MCPAN -e 'CPAN::install(Switch)'
+sudo perl -MCPAN -e 'CPAN::install(VCF)'
+```
+
+```{sh}
+## Get some data in VCF format
+git clone git@github.com:danjlawson/pcapred.ref.git
+cp pcapred.ref/inst/extdata/1000G_tinysubset.* .
 gunzip 1000G_tinysubset.bim.gz
 plink1.9 --bfile 1000G_tinysubset --recode vcf --out 1000G_tinysubset_unphased
-beagle gt=1000G_tinysubset_unphased.vcf out=1000G_tinysubset_chr01 chrom=1
-gunzip 1000G_tinysubset_chr01.vcf.gz
-vcf2cp.pl 1000G_tinysubset_chr01.vcf 1000G_tinysubset_chr01
-makeuniformrecfile.pl 1000G_tinysubset_chr01.phase 1000G_tinysubset_chr01.rec
-fs 1000G_tinysubset_chr01.cp -phasefiles 1000G_tinysubset_chr01.phase -idfile 1000G_tinysubset_chr01.ids -recombfiles 1000G_tinysubset_chr01.rec -go
+## Process each chromosome separately:
+for chr in `seq 1 22`; do
+	## First phase the data:
+	java -jar $HOME/bin/beagle.28Jun21.220.jar gt=1000G_tinysubset_unphased.vcf out=1000G_tinysubset_chr$chr chrom=$chr
+	## Convert it to chromopainter format via the safe VCF route:
+	gunzip 1000G_tinysubset_chr$chr.vcf.gz
+	perl -Mlocal::lib ~/bin/vcf2cp.pl 1000G_tinysubset_chr$chr.vcf 1000G_tinysubset_chr$chr
+	## Make a suitable recombination map:
+	makeuniformrecfile.pl 1000G_tinysubset_chr$chr.phase 1000G_tinysubset_chr$chr.rec
+done
+## Run a combined finestructure analysis:
+## NB The format {1..22} is bash specific and you may have to list the files individually.
+fs 1000G_tinysubset_test.cp -phasefiles 1000G_tinysubset_chr{1..22}.phase -idfile 1000G_tinysubset_chr1.ids -recombfiles 1000G_tinysubset_chr{1..22}.rec -go
 ```
 
 

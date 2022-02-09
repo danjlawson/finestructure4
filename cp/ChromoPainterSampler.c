@@ -843,6 +843,9 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
 
 	  /* print props, lengths, counts, and differences: */
  	  if (finalrun) printSummary(m,num_regions_tot,copy_prob_pop,total_counts,total_lengths,total_differences,total_region_counts,total_squared_region_counts,Outfiles,Par);
+	  for (i = 0; i < 8; i++)
+	    free(back_prob[i]);
+	  free(back_prob);
 	}
       free(allelic_type_count_vec);
     }
@@ -853,9 +856,9 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
   free(copy_prob_new);
   free(copy_prob_newSTART);
   free(MutProb_vec_new);
-  for (i = 0; i < 8; i++)
-    free(back_prob[i]);
-  free(back_prob);
+  //  for (i = 0; i < 8; i++)
+  //    free(back_prob[i]);
+  //  free(back_prob);
   free(total_back_prob);
   free(total_back_probSTART);
   free(ndonorhaps_vec);

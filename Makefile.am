@@ -4,7 +4,7 @@
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 
-bin_PROGRAMS = fs mixPainter
+bin_PROGRAMS = fs # mixPainter
 
 ##OPTIMIZATION = -O3 -lm -Wall -Wno-write-strings -mfpmath=sse -msse -msse2 -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fopenmp -Wno-unused-variable $(OPENMP_CXXFLAGS)
 OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -Wno-unused-variable $(OPENMP_CXXFLAGS)
