@@ -346,7 +346,7 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 }
 
 ///////////////////////////////////////////////
-double ** sampler(int * newh, int ** existing_h, int *p_Nloci, int *p_Nhaps, int *p_nchr, double p_rhobar, double * MutProb_vec, int * allelic_type_count_vec, double * lambda, double * pos, double * copy_prob, double * copy_probSTART, int * pop_vec, int * cond_mat_haplotypes,int ndonorpops, int run_num, int ind_val, struct files_t *Outfiles, struct param_t *Par)
+double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, int *p_Nloci, int *p_Nhaps, int *p_nchr, double p_rhobar, double * MutProb_vec, int * allelic_type_count_vec, double * lambda, double * pos, double * copy_prob, double * copy_probSTART, int * pop_vec, int * cond_mat_haplotypes,int ndonorpops, int run_num, int ind_val, struct files_t *Outfiles, struct param_t *Par)
 {
 
 
@@ -374,10 +374,6 @@ double ** sampler(int * newh, int ** existing_h, int *p_Nloci, int *p_Nhaps, int
   double * snp_info_measure=malloc(ndonorpops * sizeof(double));
 
   if(Par->vverbose) fprintf(Par->out,"        sampler: initializing\n");
-
-  double ** copy_prob_new_mat = malloc(8 * sizeof(double *));
-  for (i=0; i < 8; i++)
-    copy_prob_new_mat[i] = malloc((*p_Nhaps+1) * sizeof(double));
 
   for(i=0 ; i< *p_Nhaps ; i++)
     {
@@ -721,7 +717,12 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
 	      }
 
 
-	      back_prob = sampler(Data->ind_chromosomes[h], 
+	      double ** back_prob = malloc(8 * sizeof(double *));
+	      for (i=0; i < 8; i++)
+		back_prob[i] = malloc((nhaps+1) * sizeof(double));
+
+	      back_prob = sampler(back_prob,
+				  Data->ind_chromosomes[h], 
 				  Data->cond_chromosomes, 
 				  &Data->nsnps,
 				  &nhaps, 
