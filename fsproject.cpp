@@ -71,7 +71,7 @@ FsProject::FsProject(std::string f,std::string d,bool verbose)
   ploidy=2;
   hpc=0;
   linkagemode=string("unlinked");
-  s12args=string("-X -Y");
+  s12args=string("");
   s1args=string("-in -iM --emfilesonly");
   s1minsnps=10000;// default: 10K
   s1snpfrac=0.1;// fraction of genome we will use for EM
@@ -79,7 +79,7 @@ FsProject::FsProject(std::string f,std::string d,bool verbose)
   s1emits=10;// number of EM iterations
   s2args=string("");
   s2combineargs=string("");
-  s34args=string("");
+  s34args=string("-X\ -Y");
   Neinf=-1; // default: we haven't got estimates
   muinf=-1; // default: we haven't got estimates
   s2chunksperregion=-1; // default: can be wrong for unlinked data!
