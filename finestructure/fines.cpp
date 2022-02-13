@@ -875,8 +875,6 @@ int finestructure(int argc, char *argv[])
 	if(opt.verbose) cout<<"MCMC PHASE"<<endl<<flush;
 	infad.resetCounters();
 	infad.metropolis(opt.burnin,opt.additional,opt.thinin,&os);
-	if(opt.verbose) cout<<"DEBUG: A"<<endl<<flush;
-	cerr<<"CERR DEBUG: A"<<endl<<flush;
 	infad.exportXmlTail(&os);
 	}catch(std::string x){cerr<<"Error in admixture:"<<endl<<x<<endl;}
     }else {

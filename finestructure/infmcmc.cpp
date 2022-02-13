@@ -356,11 +356,7 @@ void InfMCMC::runone(long iter,long thin,std::ostream * fileout){
 		numHyper++;
 		accHyper+=(int)moveHyper();
 	}
-	cout<<"DEBUG C1"<<endl<<flush;
-	cerr<<"CERR DEBUG C1"<<endl<<flush;
 	if(iter % thin==0 && fileout!=NULL) exportXmlIter(fileout,iter);
-	cerr<<"CERR DEBUG C2"<<endl<<flush;
-	cout<<"DEBUG C2"<<endl<<flush;
 }
 
 void InfMCMC::metropolis(long prevints,long numints, long thin,std::ostream * fileout,long totallength)
@@ -378,14 +374,8 @@ void InfMCMC::metropolis(long prevints,long numints, long thin,std::ostream * fi
 		}
 		if (c1+1==totallength)
 			if(!silent) cout<<"\b\b\b\b# 100%"<<endl<<flush;
-		cerr<<"CERR DEBUG B1"<<endl<<flush;
-		cout<<"DEBUG B1"<<endl<<flush;
 		runone(c1,thin,fileout);
-		cerr<<"CERR DEBUG B2"<<endl<<flush;
-		cout<<"DEBUG B2"<<endl<<flush;
 	}
-	cerr<<"CERR DEBUG B3"<<endl<<flush;
-	cout<<"DEBUG B3"<<endl<<flush;
 }
 
 
