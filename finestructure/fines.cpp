@@ -721,15 +721,15 @@ int finestructure(int argc, char *argv[])
 	  if(args.size()<3) {
 	    cout<<"Error: -e tree needs <chunkcounts.out> <mcmc.xml> <tree.xml> <output>"<<endl; return 0;
 	  }
-	  Inf1 *tmptree = new Inf1(GlobalReadTree(rng,dsafe,fstree,prior,dlength,dref,
-						  datainference,modeltype,opt.verbose+opt.silent*2));
+	  Inf1 *tmptree = GlobalReadTree(rng,dsafe,fstree,prior,dlength,dref,
+						  datainference,modeltype,opt.verbose+opt.silent*2);
 	      tmptree->printTree(&os,false);
 	}else {cerr<<"Error: invalid extraction."<<endl;}
 	// end of extract functions
 /// MCMC MODEL
     }else if(opt.method.compare(0,1,"M")==0|| opt.method.compare(0,1,"O")==0) {
       if(opt.verbose) cout<<"Starting MCMC calculation."<<endl;
-      InfMCMC infMCMC=GlobalRunMCMC(rng,state,&os,opt.burnin,opt.additional,opt.thinin,comment,datainference,opt.pcaprob,opt.fixK,opt.verbose+opt.silent*2);
+      InfMCMC * infMCMC=GlobalRunMCMC(rng,state,&os,opt.burnin,opt.additional,opt.thinin,comment,datainference,opt.pcaprob,opt.fixK,opt.verbose+opt.silent*2);
 /*
 	try{InfMCMC infMCMC(d,state,dlength,datainference,opt.verbose+opt.silent*2);
 	if(opt.verbose) cout<<"BURN IN PHASE"<<endl;
@@ -739,13 +739,14 @@ int finestructure(int argc, char *argv[])
 	infMCMC.metropolis(opt.burnin,opt.additional,opt.thinin,&os);
 */
 	try{
-	State * state2=new State(infMCMC.getState());
+	State * state2=new State(infMCMC->getState());
 	if(opt.method.compare(0,1,"M")==0 ) {
 	  Inf1 inf2(rng,state2,datainference,opt.verbose+opt.silent*2,opt.test_max,opt.treescale);
 	  if(opt.verbose) cout<<"TREE CREATION PHASE"<<endl;
 	  try{inf2.mergeHillClimb(&os,false,treemodification);}catch(std::string x){cout<<x<<endl;exit(0);}
 	}
-	infMCMC.exportXmlTail(&os);
+	infMCMC->exportXmlTail(&os);
+	delete(infMCMC);
 	}catch(std::string x){cout<<"Tree creation error: "<<x<<endl;}
 /// (SEMI) DETERMINISTIC MODELS
     }else if (opt.method.compare(0,1,"S")==0) {// split tree
@@ -827,18 +828,18 @@ int finestructure(int argc, char *argv[])
 	compareDataFiles(olddatafile, dsafe->getFileName()); // produces warnings if there are different file names
 //cout<<"treetype="<<treetype<<" (data) (fs) treetestmax="<<opt.test_max<<" hcs="<<opt.burnin<<";
 //cout<<" di="<<datainference<<" mt="<<modeltype<<" (state) (dlength) hfxml="<<havefullxmlinput<<" fixK="<<opt.fixK<<" ts="<<opt.treescale<<endl;
-	Inf1 inf1=mergeTree(rng,treetype,dcount, fs,opt.test_max,opt.burnin,prior,
+	Inf1* inf1=mergeTree(rng,treetype,dcount, fs,opt.test_max,opt.burnin,prior,
 			    datainference,modeltype, state, dlength,dref, havefullxmlinput,opt.fixK,opt.treescale,oname,maxconcordance,opt.verbose+opt.silent*2);
 //	Inf1 inf1(state2,dlength,datainference,opt.verbose,opt.test_max);
-	inf1.exportXmlHead(&os,fs,string("MergeTree"),opt.burnin);
-	inf1.exportXmlComment(&os,comment);
-	InfMCMC* tmcmc=new InfMCMC(rng,inf1.getState(),INFDATA_COUNTS,0,false);//Used to print the state
+	inf1->exportXmlHead(&os,fs,string("MergeTree"),opt.burnin);
+	inf1->exportXmlComment(&os,comment);
+	InfMCMC* tmcmc=new InfMCMC(rng,inf1->getState(),INFDATA_COUNTS,0,false);//Used to print the state
 	tmcmc->exportXmlIter(&os,0); // export the iteration
-//	inf1.getState()->iterPrint(&os);
-	try{inf1.mergeHillClimb(NULL,false,treemodification);}catch(std::string x){cout<<x<<endl;exit(0);}
+//	inf1->getState()->iterPrint(&os);
+	try{inf1->mergeHillClimb(NULL,false,treemodification);}catch(std::string x){cout<<x<<endl;exit(0);}
 	if(opt.verbose) cout<<"Assigning certainty"<<endl;
 	FsXml *infile=new FsXml(fs);
-	InfExtract3 iext3(rng,dsafe,infile,inf1.getNodes(),opt.verbose);
+	InfExtract3 iext3(rng,dsafe,infile,inf1->getNodes(),opt.verbose);
 	delete(infile);
 	/*
 	// NOTE: Diagonalise disabled due to errors with force files.
@@ -855,8 +856,9 @@ int finestructure(int argc, char *argv[])
 		infHillClimb->getState()->iterPrint(&os);
 	}
 */
-	inf1.printTree(&os);
-	inf1.exportXmlTail(&os);	
+	inf1->printTree(&os);
+	inf1->exportXmlTail(&os);
+	delete(inf1);
     }else if(opt.method.compare(0,1,"A")==0) {// admixture model
 	bool atest=false;
 	if(opt.method.compare(0,10,"ADMIXTURET")==0) atest=true;

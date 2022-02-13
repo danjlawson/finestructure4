@@ -53,7 +53,7 @@ namespace fines
     return(bvec);
 }*/
 
-  Inf1 mergeTree(my_rng * rng,int treetype, Data *d, string fs,long testmax,long hcsteps, Prior *prior,
+  Inf1* mergeTree(my_rng * rng,int treetype, Data *d, string fs,long testmax,long hcsteps, Prior *prior,
 	       int datainference,int modeltype, State *startstate, Data *dlength, Data *dref, bool havefullxmlinput,bool fixK,int treescale,string oname,int maxconcordance,int verbose) {
 	if(verbose==1) cout<<"MERGE PHASE"<<endl;
 
@@ -117,7 +117,7 @@ namespace fines
 		}else {cerr<<"Invalid tree type (-t option)."<<endl;exit(0);}
 	};
 	//	state2->iterPrint(&cout);
-	Inf1 inf1(rng,state2,datainference,verbose,testmax,treescale);
+	Inf1* inf1 = new Inf1(rng,state2,datainference,verbose,testmax,treescale);
 	//	inf1.getState()->iterPrint(&cout);
 	return(inf1);
 /*	inf1.exportXmlHead(&os);
@@ -132,7 +132,7 @@ namespace fines
 */
 }
 
-  Inf1 GlobalReadTree(my_rng * rng,Data *d,string filename, Prior *prior,Data *dlength,Data *dref,
+  Inf1* GlobalReadTree(my_rng * rng,Data *d,string filename, Prior *prior,Data *dlength,Data *dref,
 		      int datainference, int modeltype,int verbose)
 {
   FsXml infile(filename);
@@ -142,28 +142,28 @@ namespace fines
   string newick=infile.getParam("Tree");
 //  cout<<"READING TREE:"<<newick<<endl;
   State *state = new State(rng,d,pop,prior,false,dlength,dref,datainference,modeltype);//*** dref
-  Inf1 ret=Inf1(rng,state,newick,verbose);
+  Inf1 * ret= new Inf1(rng,state,newick,verbose);
   return(ret);
 }
 
-InfMCMC GlobalRunMCMC(my_rng * rng,State *initstate,ostream *os,long burnin,long additional,long thinin,string comment,
+InfMCMC* GlobalRunMCMC(my_rng * rng,State *initstate,ostream *os,long burnin,long additional,long thinin,string comment,
 		      int datainference,double pcaprob,bool fixK,int verbose)
 {
   //  cout<<"TEST1"<<endl;
-  InfMCMC infMCMC(rng,initstate,datainference,pcaprob,verbose);
+  InfMCMC *infMCMC=new InfMCMC(rng,initstate,datainference,pcaprob,verbose);
   try{
     //  cout<<"TEST2"<<endl;
-    if(fixK) infMCMC.fixK();
+    if(fixK) infMCMC->fixK();
     //   cout<<"TEST2a"<<endl;
-    infMCMC.exportXmlHead(os,burnin,additional,thinin);
+    infMCMC->exportXmlHead(os,burnin,additional,thinin);
     //  cout<<"TEST2b"<<endl;
-	infMCMC.exportXmlComment(os,comment);
+	infMCMC->exportXmlComment(os,comment);
 	if(verbose) cout<<"BURN IN PHASE"<<endl;
-	infMCMC.metropolis(0,burnin);
+	infMCMC->metropolis(0,burnin);
 	if(verbose) cout<<"MCMC PHASE"<<endl;
-	infMCMC.resetCounters();	
-	for(long c1=0;c1<additional;c1++){infMCMC.metropolis(c1,1,thinin,os,additional);}
-	if(additional % thinin==0) infMCMC.exportXmlIter(os,additional);
+	infMCMC->resetCounters();	
+	for(long c1=0;c1<additional;c1++){infMCMC->metropolis(c1,1,thinin,os,additional);}
+	if(additional % thinin==0) infMCMC->exportXmlIter(os,additional);
 
   }catch(string x){
     cerr<<"Error in GlobalRunMCMC:"<<x<<endl;

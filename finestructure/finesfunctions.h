@@ -27,16 +27,16 @@ namespace fines
   std::vector<double> getBvec(int betamodel,int betamodelref,int datainference,vector<double> bvec=vector<double>(0),
 			      string betapriorstring=string(""),long ignorelines=0,bool xhead=true,bool yhead=true);
 
- Inf1 mergeTree(my_rng * rng,int treetype, Data *d, string fs,long testmax,long hcsteps, Prior *prior,
+  Inf1 *mergeTree(my_rng * rng,int treetype, Data *d, string fs,long testmax,long hcsteps, Prior *prior,
 	       int datainference=INFDATA_COUNTS, int modeltype=MODELTYPE_FINESTRUCTURE,State *startstate=NULL, Data *dlength=NULL, Data *dref=NULL, bool havefullxmlinput=true,bool fixK=false,int  treescale=0,string oname="",int maxconcordance=500,int verbose=0);
 
-Inf1 GlobalReadTree(my_rng * rng,Data *d,string filename, Prior *prior,Data *dlength=NULL,Data *dref=NULL,
+  Inf1 * GlobalReadTree(my_rng * rng,Data *d,string filename, Prior *prior,Data *dlength=NULL,Data *dref=NULL,
 		    int datainference=INFDATA_COUNTS, int modeltype=MODELTYPE_FINESTRUCTURE,int verbose=0);
  
-InfMCMC GlobalRunMCMC(my_rng * rng,State *initstate,ostream *os,long burnin,long additional,long thinin,string comment,
+  InfMCMC * GlobalRunMCMC(my_rng * rng,State *initstate,ostream *os,long burnin,long additional,long thinin,string comment,
 		      int datainference=INFDATA_COUNTS,double pcaprob=0,bool fixK=false,int verbose=0);
 
- void getXmlHeader(string filename, double &cval,double &cvalref,long &burnin, long &mcmclength, long &mcmcskip,string &datafilestr);
+  void getXmlHeader(string filename, double &cval,double &cvalref,long &burnin, long &mcmclength, long &mcmcskip,string &datafilestr);
 
-int compareDataFiles(string f1, string f2);
+  int compareDataFiles(string f1, string f2);
 } // end namespace fines
