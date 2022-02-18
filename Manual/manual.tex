@@ -1,0 +1,353 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{sidecap}
+\usepackage{multirow}
+\usepackage{listings}
+% Alter some LaTeX defaults for better treatment of figures:
+    % See p.105 of "TeX Unbound" for suggested values.
+    % See pp. 199-200 of Lamport's "LaTeX" book for details.
+    %   General parameters, for ALL pages:
+    \renewcommand{\topfraction}{1.2}    % max fraction of floats at top
+    \renewcommand{\bottomfraction}{1.2} % max fraction of floats at bottom
+    %   Parameters for TEXT pages (not float pages):
+    \setcounter{topnumber}{2}
+    \setcounter{bottomnumber}{2}
+    \setcounter{totalnumber}{2}     % 2 may work better
+    \setcounter{dbltopnumber}{2}    % for 2-column pages
+    \renewcommand{\dbltopfraction}{0.9} % fit big float above 2-col. text
+    \renewcommand{\textfraction}{0.07}  % allow minimal text w. figs
+    %   Parameters for FLOAT pages (not text pages):
+    \renewcommand{\floatpagefraction}{0.8}      % require fuller float pages
+        % N.B.: floatpagefraction MUST be less than topfraction !!
+    \renewcommand{\dblfloatpagefraction}{0.8}   % require fuller float pages
+
+\lstset{breaklines=true,frame=single,captionpos=t}
+\renewcommand{\ttdefault}{pcr}
+\lstdefinestyle{customsh}{
+  basicstyle=\ttfamily \small,
+  showstringspaces=false,
+  showlines=true,
+  identifierstyle=\color{blue},
+  stringstyle=\color{red},
+}
+
+\title{fs: FineSTRUCTURE and ChromoPainter v2 Manual}
+\author{Daniel John Lawson\thanks{Integrative Epidemiology Unit, School of Social and Community Medicine, and Department of Statistics, University of Bristol, UK}\\\href{mailto:dan.lawson@bristol.ac.uk}{dan.lawson@bristol.ac.uk} }
+
+\begin{document}
+\maketitle
+
+\section*{About}
+This is the manual for FineSTRUCTURE Version \input{fsversion.txt}. %This manual and software was written by Dan Lawson, except for the ChromoPainter code which was written by Garrett Hellenthal.
+FineSTRUCTURE is software to perform population assignment using \emph{large numbers of densely sampled} genomes, including both SNP chips and sequence data. This version greatly simplifies its use, removing the complex pipeline and allowing very simple use for small datasets, and reasonably simple integration with High Performance Computing (HPC) machines.
+
+See \url{www.paintmychromosomes.com} for the most up to date information.  The correct reference is: 
+\begin{itemize}
+\item \href{http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1002453}{Inference of population structure using dense haplotype data}, Daniel Lawson, Garrett Hellenthal, Simon Myers, and Daniel Falush, 2012. PLoS Genetics, Vol. 8(1): e1002453,
+\end{itemize}
+which contains the motivation and justification
+behind the method.  Similar in concept to \href{http://pritch.bsd.uchicago.edu/software.html}{STRUCTURE},
+fineSTRUCTURE assigns individuals to populations using a model for the expected variability.
+The advantage of our approach is that very large numbers of SNPs (Single Nucleotide
+Polymorphisms) can be used and linkage disequilibrium can be efficiently exploited. To achieve this the computation is split into a {\bf painting} step and a {\bf population inference} step.
+
+This software is {\bf currently only available for Linux} and Unix compatible operating systems (such as Mac). To use it with Windows you will need \href{http://www.cygwin.com}{cygwin}. \href{http://www.maths.bris.ac.uk/~madjl/finestructure-old}{Version 0} is available for Windows, but its use is strongly discouraged due to the inherent difficulty of running a genomics pipeline via graphical interfaces. The version described in this manual is command-line only.
+
+This software is in constant development: please report all bugs to the author.
+
+\tableofcontents
+
+\section{Structure of this software}
+
+We provide a single interface, `fs', to access all functions and to make managing a complex computational pipeline possible. Specifically, this code incorporates:
+\begin{itemize}
+\item {\bf ChromoPainter}: Taking in phased sequence data, this `paints' each haplotype using the others.
+\item {\bf ChromoCombine}: This combines the output of ChromoPainter into a few files summarizing the genome-wide sharing of haplotypes between all individuals. The main output of chromocombibe is the `coancestry matrix'.
+\item {\bf FineSTRUCTURE}: Working with the coancestry matrix, we identify statistically indistinguishable individuals and cluster them.
+\end{itemize}
+We have added diagnostic tests for MCMC convergence to ensure that FineSTRUCTURE has been run long enough.
+
+If you have only a small dataset, then you can {\bf run the entire pipeline}, exploiting multiple processors, {\bf using a single command}.  If you have a large dataset and a HPC machine, it can instead provide command lines to be processed.
+
+\section{How to use this software}
+
+This software attempts to automate as much of the processing pipeline as possible. You need to start with \emph{phased} data as output by either SHAPEIT, BEAGLE, IMPUTE2, etc. {\bf BEAGLE 4+ using VCF and we therefore recommend this as we provide the script `vcf2cp.pl'.} There are conversion scripts provided for each of these, described in Section \ref{sec:scripts}. We don't want to make any recommendations, but most people use SHAPEIT. The others may be better depending on your circumstances.
+
+Running FineSTRUCTURE for small datasets is now extremely easy. If you have both a modest number of individuals (less than around 200) and SNPS (100K) you can run the whole pipeline on a single machine (exploiting multiple cores, if you have them). Running the entire pipeline could be as simple as:
+\begin{lstlisting}[caption=Simple example)]
+> fs example.cp -idfile data.ids -phasefiles data.phase -recombfiles data.recombfile -go
+\end{lstlisting}
+where we have specified 5 things:
+\begin{itemize}
+\item \verb!example.cp!: This is the file where the results and intermediate quantities are stored. A directory called `example' will be created to store intermediate files.
+\item \verb!-idfile data.ids!: This defines the names of each individual in the data, one per row. 
+\item \verb!-phasefiles data.phase!: This contains the PHASE format data (and we could have specified different files for different chromosomes, e.g. \verb!-phasefiles chr1.phase chr2.phase!)
+\item \verb!-recombfiles data.recombfile!: This contains the linkage information about the genetic distance between the SNPs specified in the phase data.
+\item \verb!-go!: fs will figure out what needs to be done and in what order. It will then (in this example) run the entire pipeline, including ensuring that the MCMC has been run long enough.
+\end{itemize}
+Converting or writing idfiles, phase files and recombination files are described in Section \ref{subsec:input} with conversion scripts in Section \ref{sec:scripts}.
+
+Running FineSTRUCTURE for larger datasets is more difficult, because we assume that users will want to exploit High Performance Computing (HPC) resources. We therefore split the computation into a number of stages, each of which can be run on a cluster. A text file is generated containing the commands, 1 per line. You will be prompted with the location of this file.  The process becomes:
+\begin{lstlisting}[caption=HPC example)]
+> fs example.cp -idfile data.ids -phasefiles data.phase -recombfiles data.recombfile -hpc 1 -go
+> qsub_run.sh -f example_commandfile1.txt # and wait for it to execute
+> fs example.fs -go
+> qsub_run.sh -f example_commandfile2.txt # and wait for it to execute
+> fs example.fs -go
+> qsub_run.sh -f example_commandfile3.txt # and wait for it to execute
+> fs example.fs -go
+> qsub_run.sh -f example_commandfile4.txt # and wait for it to execute
+> fs example.fs -go
+\end{lstlisting}
+Because there are things that can go wrong in each processing step, and rerunning has an overhead in this approach, it is more important to get the parameters right in advance in HPC mode. See `Potential pitfalls' (Section \ref{sec:pitfalls}) to get these right first time.
+
+You are STRONGLY ENCOURAGED to go through the provided example, to get a feeling for how this works in practice, to see how to set various important parameters, and to cover some basic problems that you might encounter.
+
+\section{Overview of FineSTRUCTURE and the help system}
+
+The program includes inline help which you can access from the command line. These are reproduced here verbatim from the current version of the program. All of the help in this document can be accessed via the command line.
+
+\subsection{Information about the processing pipeline}
+\begin{lstlisting}[caption=Overview help]
+> fs -h info
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpinfo.txt}
+
+\subsection{Basic Help for `automatic mode'}
+\begin{lstlisting}[caption=Basic Help]
+> fs -h
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelp.txt}
+
+\section{Detailed help}
+
+\subsection{Information on Input formats}
+\label{subsec:input}
+See also the conversion scripts in Section \ref{sec:scripts}.
+\begin{lstlisting}[caption=Input help)]
+> fs -h input
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpinput.txt}
+
+\subsection{Help on how the computation is performed}
+\begin{lstlisting}[caption=Help on what happens during each processing stage]
+> fs -h stages
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpstages.txt}
+
+\subsection{Help on the output files created}
+\begin{lstlisting}[caption=Help on what output files are created and in which stage]
+> fs -h output
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpoutput.txt}
+
+\subsection{Help on specific parameters}
+Help on specific commands or parameters is obtained by invoking help with the name as the argument.  See Section \ref{subsec:parameters} for obtaining a list of all parameters.
+\begin{lstlisting}[caption=Example for accessing the help about a parameter]
+> fs -h s1indfrac
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelps1indfrac.txt}
+
+\subsection{Accessing FineSTRUCTURE, ChromoCombine and ChromoPainter directly}
+\begin{lstlisting}[caption=Help on accessing the tools]
+> fs -h tools
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelptools.txt}
+
+\subsection{List of all parameters}
+\label{subsec:parameters}
+\begin{lstlisting}[caption=Help on all parameters that can be set]
+> fs -h parameters
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpparameters.txt}
+
+\section{ChromoPainter}
+IMPORTANT NOTE: this version of ChromPainter temporarily does not support donor files!
+\begin{lstlisting}[caption=ChromoPainter help]
+> fs -h cp
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpcp.txt}
+
+\section{ChromoCombine}
+\begin{lstlisting}[caption=ChromoCombine help]
+> fs -h combine
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpcombine.txt}
+
+\section{FineSTRUCTURE}
+\begin{lstlisting}[caption=FineSTRUCTURE help]
+> fs -h fs
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fshelpfs.txt}
+
+\section{Computational considerations}
+
+The ChromoPainter step has computational cost proportional to $N^2 L$ where $N$ is the number of individuals and $L$ is the number of SNPs.  This is parallelized automatically, so if you have a large enough compute cluster, the cost is $NL$. For guidance, $L=88K$ and $N=100$ takes 3130 seconds (50 minutes) on a 2010 laptop using a single CPU. $L=88K$ and $N=500$ takes 264000 seconds (3 days). $L=800K$ and $N=1000$ (HGDP scale dataset) required a week on a moderate scale cluster. $L=10M$ (sequence data) for $N=500$ requires a similar amount of compute.  $N=1500$ on sequence data is about as high as is reasonably manageable; up to $N=3000$ is manageable for SNP chip data.
+
+The big barrier to computation for sequence data is memory. The cost per parallel run is proportional to $NL$, which can run to several Gigabytes, preventing easy parallelization. We are addressing this, but for the meantime you may need to customize the provided qsub script to request an appropriate amount of memory per chromosome.
+
+If you are attempting to work with a dataset at or above this scale, we do have methodology in development for this. PBWT painting (an approximate algorithm) is orders of magnitude faster, and we are developing low-memory, efficient versions of the ChromoPainter algorithm too. Contact us if you might be interested in joining the development of these algorithms.
+
+Running FineSTRUCTURE is also a problem at this scale. It has run time independent of $L$, and has been run successfully (taking approx two weeks) for $N=2000$.  For larger runs we provide an optimization script (See scripts/finestructuregreedy.sh) which greedily searches for the maximum a-posteriori state. This typically gets stuck in a local mode but multiple independent runs find similar enough best states to be useful. Expect serious problems above $N=10000$.
+
+\section{Greedy finestructure}
+We have created a simple bash script that uses the pre-existing finestructure commands to compute the MAP (maximum aposteriori) state estimation using greedy optimisation. This can be many times faster than performing full MCMC, and is suitable for very large datasets (it is probably your only option for 10000+ samples). ChromoPainter will have become a very significant cost by this point.
+
+To use greedy optimization, you should:
+\begin{enumerate}
+\item Run ChromoPainter to obtain the \emph{combined} coancestry matrix using \verb!fs <filename>.cp <options> -combines2!.
+\item Run \verb!finestructuregreedy.sh <filename>.chunkcounts.out outputfile.xml! This uses the "tree building" step of finestructure by repeatedly:
+  \begin{itemize}
+    \item Attempting MCMC moves, accepting only if they increase the posterior probability.
+    \item Checking after a certain amount of iterations whether any progress has been made.
+  \end{itemize}
+\end{enumerate}
+
+IMPORTANT NOTE: The \verb!-x! option controls how many steps are taken between each step. The default of 50000 may be moderately slow, but it does try hard to find a better state. If this is too low, the algorithm will terminate prematurely.
+
+There is a danger of getting stuck in a local optima, and of failing to find a possible move that would increase the Posterior. However, empirically the approach does perform well enough for exploratory data analysis. Convergence is assessed simply by counting the number of populations (as it unlikely that adding then removing populations is possible).
+
+\begin{lstlisting}[caption=finestructuregreedy]
+> finestructuregreedy.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsfinestructuregreedy.sh.txt}
+
+\section{Job submission in qsub and related environments}
+It is your own responsibility to correctly submit jobs to your HPC infrastructure. Because of the wide variety of configurations available, we cannot write a script that will be able to work with all or even a high fraction of such systems. If you have a way of doing this for every line in a text file, then use that. qsub job arrays (qsub -t) are the standard way of doing this, but they did not work correctly with our version of torque.
+
+However, we have provided a script that works on our institutional HPC machine using qsub. It may require minor or major modification to work with other systems - use it cautiously! It can be found in the scripts directory.
+\begin{lstlisting}[caption=qsub script for job submission]
+qsub_run.sh  <commandlist.txt>
+\end{lstlisting}
+This creates a 
+
+For other systems, you might want to consider the unix command `split'. This can split the command list into e.g. parallel processing units. If you can run commands in batches of 8, then:
+\begin{lstlisting}[caption=Qsub script for job submission]
+> split -l 8 example_commandfile1.txt example_commandfile1_split
+\end{lstlisting}
+generates files with names like \verb!example_commandfile1_split<aa-...>! each containing 8 lines from the command file.
+
+\section{Provided scripts}
+\label{sec:scripts}
+These are provided in the `scripts' directory. You will need to add this directory to your path, copy them to somewhere in your path, or specify absolute file locations.
+
+The usual caveats should be followed; we try to make these scripts work, but if they don't then we aren't responsible! Try to fix the problem yourself and let the author know of the issue.
+
+\subsection{makeuniformrecfile.pl}
+Creates a recombination rate map for use with the linkage model of chromopainter. This is \emph{essential} if you do not have a provided recombination map for your species! The map assumes a constant rate of recombination \emph{per base}, not per SNP.
+\begin{lstlisting}[caption=makeuniformrecfile]
+> makeuniformrecfile.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsmakeuniformrecfile.pl.txt}
+
+\subsection{convertrecfile.pl}
+Converts between recombination map files, and can take a wide varienty of map formats and convert them into a suitable format for ChromoPainter. For example, the HapMap B37 data obtained from nih can be processed with "convertrecfile.pl -M hapmap", but any CDF or PDF style format is supported.
+\begin{lstlisting}[caption=convertrecfile]
+> convertrecfile.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsconvertrecfile.pl.txt}
+
+\subsection{phasescreen.pl}
+Remove non-varying SNPs and singletons from a PHASE file. This speeds execution of ChromoPainter and does not change the output.
+\begin{lstlisting}[caption=phasescreen]
+> phasescreen.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsphasescreen.pl.txt}
+
+\subsection{phasesubsample.pl}
+Subsamples phase-style data in a contiguous block. This is useful for pipeline generation and testing, although ChromoPainter now provides this facility with the \verb!-l <from> <to>! format which you can specify in -s12args.
+\begin{lstlisting}[caption=phasesubsample]
+> phasesubsample.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsphasesubsample.pl.txt}
+
+\subsection{vcf2cp.pl (BEAGLE and related format)}
+Conversion script for going from {\bf PHASED} VCF format, which includes BEAGLE (\url{https://faculty.washington.edu/browning/beagle/beagle.html}) output, to ChromoPainter's PHASE and RECOMBFILES files.
+\begin{lstlisting}[caption=vcf2cp]
+> vcf2cp.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsvcf2cp.pl.txt}
+
+\subsection{impute2chromopainter.pl (SHAPEIT format)}
+Conversion script for going from IMPUTE2 format, which includes SHAPEIT (\url{www.shapeit.fr}) output, to ChromoPainter's PHASE and RECOMBFILES files.
+\begin{lstlisting}[caption=impute2chromopainter]
+> impute2chromopainter.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsimpute2chromopainter.pl.txt}
+
+\subsection{msms2cp.pl (MSMS and MS output format)}
+Conversion script for going from data simulated by MS (\url{home.uchicago.edu/rhudson1/source/mksamples.html}) or its variants including MSMS (\url{www.mabs.at/ewing/msms}), to ChromoPainter's PHASE and RECOMBFILES files.
+\begin{lstlisting}[caption=msms2cp]
+> msms2cp.pl
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsscriptsmsms2cp.pl.txt}
+
+\section{Potential pitfalls}
+\label{sec:pitfalls}
+
+If your data is not correctly in the format we expect, then anything can go wrong. We try to detect this but we don't test everything. Check that your data are valid first!
+
+The main pitfalls that can happen with valid data are:
+\begin{enumerate}
+\item ChromoPainter parameter estimation fails.  This happens when the default parameters are too far from the true parameters, and therefore the parameter estimation converges to a suboptimal solution (usually with effectively infinite or zero recombination rate). 
+\begin{itemize}
+\item \emph{Symptoms}: getting a silly value of `c' (tiny), getting very many or very few chunks: row sums of the chunk count matrix being close to the number of SNPs or being about 1. The *EMprobs.out files probably aren't converged. When running -combines2 you may get a warning about `c' being out of the expected range.
+\item \emph{Happens when}: using data with too large or too small genetic distance between SNPs. Happens with simulated data and with non-humans, particularly when using makeuniformrecfile.pl to make a recombination map, which assumes human-like SNP density.
+\item \emph{Solutions}: Rerun stage1 with a different starting location for Ne. Try either very much larger or very much smaller than the default, in the opposite direction to the inferred values. The default is 400000/number of donor haplotypes. Obtain the estimate using \verb!grep Neinf <file>.cp!. Set the parameter via \verb!-s1args:-in\ -iM\ --emfilesonly\ -n <value>! where you replace \verb!<value>! with a number, e.g. 10 or 100000. (The other arguments are defaults that only experts should change.)
+\end{itemize}
+\item ChromoPainter `c' estimation fails.
+\begin{itemize}
+\item \emph{Symptoms}: Usually  you will get a `ChromoCombine' error and be told that no regions were found. You should rerun stage2. 
+\item \emph{Happens when}: The parameters are badly inferred. There isn't very much data. The recombination rate is very low, resulting in high LD.
+\item \emph{Solutions}: Try setting \verb!-reset 2 -s2chunksperregion <value>! (chromopainter's -k) to a lower \verb!<value>!, less than the rowsums of each chromosome of each individual. If that is lower than about 20, see below.
+\end{itemize}
+\item ChromoPainter `c' estimation went wrong, but passed tests.
+\begin{itemize}
+\item \emph{Symptoms}:  MCMC results are over-split.
+\item \emph{Happens when}: The parameters are badly inferred. There isn't very much data. The recombination rate is very low, resulting in high LD.
+\item \emph{Solutions}: As above. If that isn't possible, you may have to resort to setting `c' manually. \verb!-duplicate 3 <newroot>.cp -s34args:-c\ 1.0! will create a new MCMC run with c=1. This is typically conservative and will be a good baseline for deciding if splits are clear or not.
+\end{itemize}
+\end{enumerate}
+
+\section{Examples}
+
+The \verb!examples/! folder contains 3 examples which should indicate good use. 
+
+\subsection{Simple and quick example}
+\begin{lstlisting}[caption=example1: simple use case on a small dataset.]
+> cat examples/example1.sh
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsexample1.sh.txt}
+
+\subsection{Involved example with few SNPs and individuals}
+\begin{lstlisting}[caption=example2: complex use case on a larger dataset split by chromosome.]
+> cat examples/example2.sh
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsexample2.sh.txt}
+
+\subsection{HGDP example, including downloading and processing.}
+This example gets the HGDP data from the website and processes it all. It is recommended only for HPC users, although with Chromosomes 21-22 it is fast enough for a single high specced machine.
+
+\begin{lstlisting}[caption=example3: HGDP download and processing.]
+> cat examples/example_hgdp.sh
+\end{lstlisting}
+\lstinputlisting[style=customsh]{fsexample_hgdp.sh.txt}
+
+
+\section{Additional comments}
+
+Please report all bugs to Dan Lawson, \href{mailto:dan.lawson@bristol.ac.uk}{dan.lawson@bristol.ac.uk}.
+
+Contributions:
+\begin{itemize}
+\item ChromoPainter was written by Garrett Hellenthal:  \href{mailto:ghellenthal@gmail.com}{ghellenthal@gmail.com}.
+\item This manual and software was written by Dan Lawson: \href{mailto:dan.lawson@bristol.ac.uk}{dan.lawson@bristol.ac.uk}.
+\end{itemize}
+
+\end{document}
+

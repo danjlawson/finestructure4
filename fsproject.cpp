@@ -79,7 +79,7 @@ FsProject::FsProject(std::string f,std::string d,bool verbose)
   s1emits=10;// number of EM iterations
   s2args=string("");
   s2combineargs=string("");
-  s34args=string("-X\ -Y");
+  s34args=string("-X -Y");
   Neinf=-1; // default: we haven't got estimates
   muinf=-1; // default: we haven't got estimates
   s2chunksperregion=-1; // default: can be wrong for unlinked data!

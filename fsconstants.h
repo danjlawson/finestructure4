@@ -106,7 +106,7 @@ This is heavily based on 'FastPhase' output. \n\
 * The first line contains the number of *haplotypes* (i.e. for diploids, 2* the number of individuals).\n\
 * The second line contains the number of SNPs.\n\
 * The third line contains the letter P, followed by the basepair location of each SNP (space separated). These must match the recombination file. Within each chromosome, basepairs must be in order.\n\
-* Each additional line contains a haplotype, in the order specified in the IDFILE. Diploids have two contiguous rows. Each character (allowing no spaces!) represents a *biallelic* SNP. Accepted characters are 0,1,A,C,G,T, with NO missing values!\n\
+* Each additional line contains a haplotype, in the order specified in the IDFILE. Diploids have two contiguous rows. Each character (allowing no spaces!) represents a *biallelic* SNP. Accepted characters for SNPs are 0,1,A,C,G,T. Missing values can be encoded as .,9,?,N (which are ommitted from the Likelihood). Indels can be coded as -,8 (which are only matched to other indels, with zero mutation rate assumed).\n\
 EXAMPLE PHASEFILE:\n";
 static const char * inputphaseexample="\
 10\n\
@@ -127,7 +127,7 @@ static const char * inputhelprec="\
 ##########################\n\
 CHROMOPAINTERS RECOMBINATION FILE FORMAT:\n\
 Required only if running in unlinked mode.\n\
-This specifies the distance between SNPs in 'recombination rate' units. There should be a header line followed by one line for each SNP in haplotype infile. Each line should contain two columns, with the first column denoting the basepair position values given in haplotype infile, in the same order. The second column should give the genetic distance per basepair between the SNP at the position in the first column of the same row and the SNP at the position in the first column of the subsequent row. The last row should have a '0' in the second column (though this is not required – this value is simply ignored by the program). Genetic distance should be given in Morgans, or at least the relevant output files assume this value is in Morgans.\n\
+This specifies the distance between SNPs in 'recombination rate' units. There should be a header line followed by one line for each SNP in haplotype infile. Each line should contain two columns, with the first column denoting the basepair position values given in haplotype infile, in the same order. The second column should give the genetic distance per basepair between the SNP at the position in the first column of the same row and the SNP at the position in the first column of the subsequent row. The last row should have a '0' in the second column (though this is not required; this value is simply ignored by the program). Genetic distance should be given in Morgans, or at least the relevant output files assume this value is in Morgans.\n\
 If you are including genetic information from multiple chromosomes, put a '-9' (or any value < 0) next to the last basepair position of the preceeding chromosome.\n\
 EXAMPLE RECOMBFILE:\n";
 static const char * inputrecexample="\

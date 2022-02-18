@@ -1,4 +1,4 @@
-AC_INIT([fs], [3.0.0], [dan.lawson@bristol.ac.uk],
+AC_INIT([fs], [4.1.0], [dan.lawson@bristol.ac.uk],
              [fs], [http://www.paintmychromosomes.com])
 AC_PREREQ([2.59])
 AC_CONFIG_AUX_DIR(config)

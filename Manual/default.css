@@ -1,0 +1,263 @@
+/*#############################################################
+Name: Transparentia
+Date: 2006-08-20
+Description: Simple, lightweight and slightly blue.
+Author: Viktor Persson
+URL: http://templates.arcsin.se
+
+Feel free to use and modify but please provide credits.
+#############################################################*/
+
+/* standard elements */
+* {
+	margin: 0;
+	padding: 0;
+}
+a {
+	color: #36C;
+}
+a:hover {
+	color: #06F;
+}
+body {
+/*	background: #EEE url(img/bg.gif);*/
+	width: 100%;
+	color: #444;
+	font: normal 100% "Lucida Sans Unicode",sans-serif;
+	margin: 0;
+}
+input {
+	color: #555;
+	font: normal 1.1em "Lucida Sans Unicode",sans-serif;
+}
+ul {
+	font: normal 100% "Lucida Sans Unicode",sans-serif;
+	margin: 0;
+	padding-bottom: 0.5em;
+}
+p,cite {
+	font-size: 1.2em;
+	padding-bottom: 1.2em;
+}
+h1,h4,h2,h3 {
+	font-size: 1.0em;
+	font-weight: bold;
+	color: #367EA6;
+	padding-top: 1px;
+}
+h1{
+	width: 100%;
+	font-size: 1.3em;
+	margin-bottom: 1px;
+}
+h4 {
+	margin-bottom: 1px;
+}
+code {
+	background: url(img/bgcode.gif);
+	border: 1px solid #F0F0F0;
+	border-left: 6px solid #39F;
+	color: #555;
+	display: block;
+	font-family: Courier, courier new, monospace;
+	font: normal 0.9em "Courier new",sans-serif;
+
+	margin-bottom: 6px;
+	padding: 8px 10px;
+	white-space: pre;
+	line-height: 0.5em;
+}
+cite {
+	background: url(img/quote.gif) no-repeat;
+	color: #666;
+	display: block;
+	font: normal 1.3em "Lucida Sans Unicode",serif;
+	padding-left: 28px;
+}
+
+/* misc */
+.clearer {
+	clear: both;
+}
+
+/* structure */
+.container {
+/*	background: url(img/bgcontainer.gif) repeat-y;*/
+	margin: 0 auto;
+	padding-bottom: 6px;
+	width: 90%;
+/*	border-bottom: 1px solid #DDD;*/
+}
+.header {
+	background: url(img/header.gif) repeat-x;
+}
+
+/* title */
+.title h4 {
+	color: #FFF;
+	font: normal 2.2em Verdana,sans-serif;
+/*	height: 120px;
+	line-height: 70px;*/
+	margin-top: 18px;
+	margin-bottom: 8px;
+	text-align: center;
+}
+.title h1 {
+	color: #FFF;
+	font: normal 2.2em Verdana,sans-serif;
+	height: 120px;
+	line-height: 120px;
+	margin-bottom: 8px;
+	text-align: center;
+}
+/* navigation */
+.navigation {
+	margin-bottom: 4px;
+}
+.navigation a {
+	background-color: #4A91C3;
+	color: #FFF;
+	float: left;
+	font: bold 1.2em "Trebuchet MS",sans-serif;
+	padding: 8px 0;
+	width: 19%;
+	border-right: 1px solid #FFF;
+	text-align: center;
+	text-decoration: none;
+}
+.navigation a:hover {
+	background-color: #000;
+	color: #FFF;
+}
+
+/* main */
+.main {
+	clear: both;
+	padding: 8px 18px;
+}
+
+/* main left */
+.sidenav h1,.sidenav ul,.sidenav h4 {
+	padding-left: 12px;
+}
+.sidenav {
+	background: #CCC;
+/*	background-color: #E5E5E5;*/
+/*	border: 1px solid #E5E5E5;*/
+	border: 0px solid #EEE;
+	float: left;
+	width: 200px;
+}
+.sidenav h1,.sidenav h4 {
+/*	background: #CCC;*/
+	color: #666;
+	font-size: 1.2em;
+	height: 20px;
+	margin-top: 0.6em;
+	margin-bottom: 0.2em;
+}
+.sidenav ul {
+	background: #AAE;/* url(img/bg.gif) repeat-x;;*/
+/*	background: #CCC url(img/bgul.gif) repeat-x;*/
+/*	background: #EEE url(img/bgul.gif) repeat-x;*/
+	border: 0px solid #EEE;
+	border-top: 3px solid #EEE;
+	border-bottom: 3px solid #EEE;
+	margin: 0;
+	padding: 0;
+	padding-bottom: 3px;
+}
+.sidenav li {
+	background: #BBE;/* url(img/li.gif) repeat-x;*/
+	border: 0px solid #EEE;
+/*	border: none;*/
+	list-style: none;
+border-bottom-style:none;
+	margin: 0;
+	padding: 0;
+}
+.sidenav li a {
+/*	background: #CCC;*/
+	color: #777;
+	display: block;
+	font-size: 0.9em;
+	padding: 3px 6px 3px 14px;
+	text-decoration: none;
+}
+.sidenav li a:hover {
+	color: #111;
+}
+
+/* content */
+.content {
+/*	float: right;*/
+/*	width: 520px;*/
+}
+.content .item {
+	padding: 6px 12px;
+	border: 1px solid #EEE;
+	background: #FFF;
+	margin-bottom: 8px;
+}
+.content .descr {
+	color: #333;
+	margin-bottom: 6px;
+}
+.content li {
+/*	font-size: 1.2em;*/
+	list-style: url(img/li.gif);
+	padding: 4px;
+/*	line-height: 20px;*/
+	margin-left: 18px;
+}
+
+/* search form */
+form {
+	padding: 0 0 6px 8px;
+}
+.styled {
+	border: 1px solid #DDD;
+	padding: 4px;
+}
+.button {
+	background: url(img/search.gif) no-repeat left bottom;
+	border: none;
+	height: 27px;
+	width: 27px;
+}
+
+/* footer */
+.footer {
+	background: #FFF;
+	border: 1px solid #EEE;
+	color: #666;
+	font-size: 1.1em;
+	margin: 0 auto;
+	text-align: center;
+	width: 720px;
+}
+.footer a {
+	color: #36C;
+	text-decoration: none;
+}
+.footer a:hover {
+	color: #06F;
+	text-decoration: underline;
+}
+.footer .left, .footer .right {padding: 6px 12px;}
+
+/* floats */
+.left {float: left;}
+.right {float: right;}
+
+li.number {
+    list-style: decimal ;
+    margin-left: 25px;
+    list-style-type: decimal ;
+}
+OL.withroman { 
+    list-style: lower-roman ;
+    list-style-type: decimal;
+	margin: 10;
+	padding: 40;
+}
