@@ -116,11 +116,10 @@ while (my $line  = $vcf->next_line) {
   ## PROCESSING POSITIONS
   if(scalar(@posvec)>0){
     if(($items[1] <= $posvec[-1]) && $items[1]>=0){
-      print "IN!\n";
       if(!$jitter){
 	die("ERROR: SNPs are not strictly ascending, exiting. Rerun with -J to jitter the SNP locations, or remove multi-allelic SNPs.\n");
       }
-      #	    print("Duplication found: setting $items[2] to $items[-1]+1\n");
+      print("Duplication found: setting $items[1] to $posvec[-1]+1\n");
       $items[1]=$posvec[-1]+1;
     }
   }
