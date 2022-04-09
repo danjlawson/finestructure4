@@ -487,7 +487,11 @@ int FsProject::getIndsPerProc(int forstage){
   if(indsperproc>0) return(indsperproc);
   if(hpc) return(1);
   int numshere=numRecipients(stage);
-  if(numthreads>0) return(ceil(((double) numshere)/numthreads));
+  if(numthreads>0) {
+    indsperproc=ceil(((double) numshere)/numthreads);
+    return(indsperproc);
+  }
+  
   // *************** FIXME!
 
   int tnumthreads = 1,th_id;
@@ -498,7 +502,8 @@ int FsProject::getIndsPerProc(int forstage){
       tnumthreads  = get_omp_get_num_threads();
     }
   }
-  return(ceil(((double)numshere)/tnumthreads));
+  indsperproc=ceil(((double) numshere)/tnumthreads);
+  return(indsperproc);
 }
 
 int FsProject::defaultChunksperregion(){
@@ -1499,9 +1504,11 @@ void FsProject::doCpStage(int stage) {
     tsv.append(logfile);
 
     std::vector<char *> argv=converttoargv(tsv);
+    
 #pragma omp atomic
     cmdon++;
 #pragma omp critical
+    {
     if(fsmode>0) {
       ss<<"Running stage "<<stage;
       if((stage==1) | (stage==6)) ss<<" (chromopainter parameter estimation) ";
@@ -1519,7 +1526,8 @@ void FsProject::doCpStage(int stage) {
     }
     cout<<(ParallelStream()<<ss.str()).toString();
     if(verbose) cout<<(ParallelStream()<<"RUNNING S"<<stage<<" CMD:"<<tsv<<"\n").toString();
-
+    }
+    
     //switchStdout(logfile.c_str());
     int rv=chromopainter(argv.size(),argv.data());
     freeargv(argv);
@@ -1527,6 +1535,8 @@ void FsProject::doCpStage(int stage) {
     
     // check that it ran correctly
     if((getLastLine(logfile).compare(cpsuccesstext)!=0)|| (rv>0)) {
+#pragma omp critical
+      {
       cerr<<"ChromoPainter Run "<<i<<" failed! Return value was "<<rv<<endl;
       string el=getLineContaining("Exiting",logfile);
       string ll=getLastLine(logfile);
@@ -1537,6 +1547,7 @@ void FsProject::doCpStage(int stage) {
 	cerr<<"See log file ("<<logfile<<") for more details."<<endl;
       }
       allok=0;
+      }
     }// endif
   }// end for
   if(!allok && ((stage==2)| (stage==7))) throw(runtime_error("chromopainter"));

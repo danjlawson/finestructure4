@@ -112,7 +112,6 @@ int openId2(struct infiles_t *Files, FILE *mainout){
 void closePhase(struct infiles_t *Files){
   // Close the output files
   if(Files->fopen[0]){fclose(Files->fphase);}
-  free(Files->fphase);
   Files->fopen[0]=0;
 }
 
