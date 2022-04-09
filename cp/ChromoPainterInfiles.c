@@ -112,6 +112,7 @@ int openId2(struct infiles_t *Files, FILE *mainout){
 void closePhase(struct infiles_t *Files){
   // Close the output files
   if(Files->fopen[0]){fclose(Files->fphase);}
+  free(Files->fphase);
   Files->fopen[0]=0;
 }
 
@@ -129,13 +130,16 @@ void closeDonorlist(struct infiles_t *Files){
 
 void closeId(struct infiles_t *Files){
   // Close the output files
-  if(Files->fopen[3]){fclose(Files->fid);}
+  if(Files->fopen[3]){
+    fclose(Files->fid);
+  }
   Files->fopen[3]=0;
 }
 
 void closePhase2(struct infiles_t *Files){
   // Close the output files
   if(Files->fopen[4]){fclose(Files->fphase2);}
+  free(Files->fphase2);
   Files->fopen[4]=0;
 }
 
