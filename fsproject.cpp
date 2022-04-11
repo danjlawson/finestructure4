@@ -483,7 +483,7 @@ int FsProject::get_omp_get_num_threads(){
 }
 
 int FsProject::getIndsPerProc(int forstage){
-  if(forstage==7) return(1);   // fs2.1: We need to to this individual by individual now! ***
+  if(forstage==7) return(1);   
   if(indsperproc>0) return(indsperproc);
   if(hpc) return(1);
   int numshere=numRecipients(stage);
@@ -491,9 +491,6 @@ int FsProject::getIndsPerProc(int forstage){
     indsperproc=ceil(((double) numshere)/numthreads);
     return(indsperproc);
   }
-  
-  // *************** FIXME!
-
   int tnumthreads = 1,th_id;
   #pragma omp parallel private(th_id)
   {
@@ -1483,7 +1480,7 @@ void FsProject::doCpStage(int stage) {
     throw(logic_error("fsproject: calling an invalid chromopainter stage (should be 1-2 for finestructure and 6-7 for admixture)"));
   }
 
-  int cmdon=0;
+  //  int cmdon=0;
   if(numthreads>0) {
     do_omp_set_num_threads(numthreads);
   }
@@ -1505,8 +1502,8 @@ void FsProject::doCpStage(int stage) {
 
     std::vector<char *> argv=converttoargv(tsv);
     
-#pragma omp atomic
-    cmdon++;
+// #pragma omp atomic
+//     cmdon++;
 #pragma omp critical
     {
     if(fsmode>0) {
@@ -1514,14 +1511,14 @@ void FsProject::doCpStage(int stage) {
       if((stage==1) | (stage==6)) ss<<" (chromopainter parameter estimation) ";
       else ss<<" (chromopainter painting) ";
       if(stage>=6) ss<<"(admixture) ";
-      ss<<"command number (~"<<cmdon<<") of "<<sv.size();
+      ss<<"command number (~"<<i<<") of "<<sv.size();
       ss<<" (logging to "<<logfile<<")";
       ss<<"\n";
     }else{
       ss<<"Running";
       if((stage==1) | (stage==6)) ss<<" chromopainter parameter estimation, ";
       else ss<<" chromopainter painting, ";
-      ss<<"command number (~"<<cmdon<<") of "<<sv.size();
+      ss<<"command number (~"<<i<<") of "<<sv.size();
       ss<<"\n";
     }
     cout<<(ParallelStream()<<ss.str()).toString();
@@ -1530,7 +1527,9 @@ void FsProject::doCpStage(int stage) {
     
     //switchStdout(logfile.c_str());
     int rv=chromopainter(argv.size(),argv.data());
+    if(verbose) cout<<"TEST: Completed"<<endl;
     freeargv(argv);
+    if(verbose) cout<<"TEST:Argv passed: Completed"<<endl;
     //revertStdout();
     
     // check that it ran correctly
@@ -1549,6 +1548,7 @@ void FsProject::doCpStage(int stage) {
       allok=0;
       }
     }// endif
+    if(verbose) cout<<"TEST:Loopend passed: Completed"<<endl;
   }// end for
   if(!allok && ((stage==2)| (stage==7))) throw(runtime_error("chromopainter"));
 }
@@ -2261,7 +2261,7 @@ bool FsProject::canDo(string cmd, bool vverbose)
       if(vverbose) cout<<"s4 output not detected."<<endl;
       return(false);
     }
-    // fs 2.1 properties from here
+    // fs 4 properties from here
   }else if(cmd.compare("-dos5")==0){
     if(!validatedoutput[4]) {
       if(vverbose) cout<<"s4 output not validated."<<endl;
@@ -2347,7 +2347,7 @@ std::vector<std::string> FsProject::getDependencies(std::vector<std::string> arg
   // makes1->dos1->combines1->makes2->dos2->combines2->makes3->dos3->makes4->dos4
   // with complications because do becomes write for hpc mode
   // -hpcs3 complicates things further in hpc mode!
-   // in fs2.1 we add:
+   // in fs4 we add:
   // dos5->combines5->makes6->dos6->combnines6
   // dos5 does not get hpc'd
  
@@ -3037,7 +3037,7 @@ void FsProject::docmd(std::vector<std::string> args)
     writeStringVectorToFile(s4commands,s4commandfile,s4logfiles);
   }
 
-  // fs2.1
+  // fs4
   if(args[0].compare("-writes6")==0){
     if(args.size()==2) s6commandfile=args[1];
     if(verbose) cout<<"Writing "<<s6commands.size()<<" stage 6 commands to "<<s6commandfile<<endl;
@@ -3095,7 +3095,7 @@ void FsProject::docmd(std::vector<std::string> args)
     dofstree();
   }
   ////////////////////////////////////////////
-  // fs 2.1
+  // fs 4
   if(args[0].compare("-dos5")==0) { // extract populations from FineSTRUCTURE
     found=checkArgs(args,0);
     checkStage(args,5);
@@ -3946,9 +3946,10 @@ void FsProject::dofstree(){
     cmdon++;
 
 #pragma omp critical
+    {
     cout<<(ParallelStream()<<"Running stage 4 (tree) command number (~"<<cmdon<<") of "<<nummcmcruns).toString()<<endl;
     if(verbose) cout<<"RUNNING S4 CMD:"<<tsv<<endl;
-
+    }
     //switchStdout(logfile.c_str());
 
     int rv=finestructure(argv.size(),argv.data());
@@ -3956,9 +3957,10 @@ void FsProject::dofstree(){
     //    revertStdout();
     // Check that it ran correctly
     if(rv!=0){
+#pragma omp critical
       cerr<<"FineStructure TREE failed!"<<endl;// See log file ("<<logfile<<") for details."<<endl;
       throw(runtime_error("finestructure"));
-      }
+    }
 }// end for
 
 }

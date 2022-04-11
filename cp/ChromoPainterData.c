@@ -404,18 +404,22 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
   //  char waste[10];
   int i,j;
   int ninds_main=0,ninds_recip=0,ninds_switch=0;
-  
+  FILE *fphase=NULL, *fphase2=NULL;
   char *ret;
 
   if(Par->vverbose)fprintf(Par->out,"ReadData: Reading main phase file %s\n",Infiles->phase);
-  Infiles->fphase=fopen(Infiles->phase,"r"); // phase file, remember
-  Datamain=ReadDataHeader(Infiles->fphase,Par); // Information from the main data file
+  //  if(!openPhase(Infiles,Par->out)){
+  fphase=fopen(Infiles->phase,"r"); // phase file. This is LOCAL TO THIS FUNCTION so NOT PART OF Infiles!
+  if(fphase==NULL) { 
+    fprintf(Par->out,"error opening file %s\n",Infiles->phase); stop_on_error(1,Par->errormode,Par->err);
+  }
+  Datamain=ReadDataHeader(fphase,Par); // Information from the main data file
 
   if(Par->geno2_find) {
     // read the recipient file
     if(Par->vverbose)fprintf(Par->out,"ReadData: Reading recipient phase file %s\n",Infiles->phase2);
-    Infiles->fphase2=fopen(Infiles->phase2,"r"); // phase file, remember
-    Datarecip=ReadDataHeader(Infiles->fphase2,Par); // Information from the recipient data file
+    fphase2=fopen(Infiles->phase2,"r"); // phase file, remember
+    Datarecip=ReadDataHeader(fphase2,Par); // Information from the recipient data file
     // Count the number of retained mainfile individuals and recipient file individuals
     for(i=0;i<Datamain->nhapstotal/Datamain->hapsperind;++i) {
       ninds_main += Ids->include_ind_vec[i];
@@ -528,11 +532,11 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
   if(Par->vverbose) fprintf(Par->out,"ReadData: Reading %i haplotype lines\n",Data->nhapstotal);
 
   int ii=-1;
-  FILE *fd=Infiles->fphase;
+  FILE *fd=fphase;
   for (i= 0; i < Data->nhapstotal; i++)
     {
       if(Par->geno2_find && i==ninds_switch*Data->hapsperind) {
-	fd=Infiles->fphase2;
+	fd=fphase2;
 	if(Par->vverbose) fprintf(Par->out,"(switching to recipient file %s after %d haplotypes)\n",Infiles->phase2,i);
       }
       if(fgets(line,100000000,fd) ==NULL) { fprintf(Par->out,"ReadData: error with PHASE-style input file at haplotype %i of %i\n",i, Data->nhapstotal); stop_on_error(1,Par->errormode,Par->err);}
@@ -581,9 +585,10 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
     for(i=0;i<Data->hapsperind;i++) fprintf(Par->out,"%i, ",i);
     fprintf(Par->out,"against all other haplotypes\n");
   }
-
-  closePhase(Infiles);
-  closePhase2(Infiles);
+  fclose(fphase);
+  if(fphase2!=NULL) fclose(fphase2);
+  /* closePhase(Infiles); */
+  /* closePhase2(Infiles); */
   return Data;
 }
 
