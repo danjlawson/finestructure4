@@ -1485,6 +1485,7 @@ void FsProject::doCpStage(int stage) {
     do_omp_set_num_threads(numthreads);
   }
   int allok=1;
+  int cmdon=0;
 #pragma omp parallel for
   for(unsigned int i=0;i<sv.size();i++)  {
     //    int thread_number = omp_get_thread_num();
@@ -1502,8 +1503,8 @@ void FsProject::doCpStage(int stage) {
 
     std::vector<char *> argv=converttoargv(tsv);
     
-// #pragma omp atomic
-//     cmdon++;
+#pragma omp atomic
+    cmdon++;
 #pragma omp critical
     {
     if(fsmode>0) {
@@ -1511,26 +1512,23 @@ void FsProject::doCpStage(int stage) {
       if((stage==1) | (stage==6)) ss<<" (chromopainter parameter estimation) ";
       else ss<<" (chromopainter painting) ";
       if(stage>=6) ss<<"(admixture) ";
-      ss<<"command number (~"<<i<<") of "<<sv.size();
+      ss<<"command number (~"<<cmdon<<") of "<<sv.size();
       ss<<" (logging to "<<logfile<<")";
       ss<<"\n";
     }else{
       ss<<"Running";
       if((stage==1) | (stage==6)) ss<<" chromopainter parameter estimation, ";
       else ss<<" chromopainter painting, ";
-      ss<<"command number (~"<<i<<") of "<<sv.size();
+      ss<<"command number (~"<<cmdon<<") of "<<sv.size();
       ss<<"\n";
     }
     cout<<(ParallelStream()<<ss.str()).toString();
     if(verbose) cout<<(ParallelStream()<<"RUNNING S"<<stage<<" CMD:"<<tsv<<"\n").toString();
     }
     
-    //switchStdout(logfile.c_str());
+    // NB: we don't have to redirect chromopainter output because it takes the file location as a parameter
     int rv=chromopainter(argv.size(),argv.data());
-    if(verbose) cout<<"TEST: Completed"<<endl;
     freeargv(argv);
-    if(verbose) cout<<"TEST:Argv passed: Completed"<<endl;
-    //revertStdout();
     
     // check that it ran correctly
     if((getLastLine(logfile).compare(cpsuccesstext)!=0)|| (rv>0)) {
@@ -1548,7 +1546,6 @@ void FsProject::doCpStage(int stage) {
       allok=0;
       }
     }// endif
-    if(verbose) cout<<"TEST:Loopend passed: Completed"<<endl;
   }// end for
   if(!allok && ((stage==2)| (stage==7))) throw(runtime_error("chromopainter"));
 }
