@@ -170,13 +170,15 @@ for (my $a=0 ; $a < $numsplits ; $a+=1) {
       my $gt=$field[0];
       my @gtv=split(/\|/, $gt);
       ### check length
-      if( $#gtv != 1 ){
+      if( ($#gtv != 1)  && ($ploidy>1)){
 	die ("Individual $idnames[$n] with field $gt at position index $snpon not phased or diploid?\n")
       }
       my $t1=($n-$startIND)*2;
-      my $t2=($n-$startIND)*2+1;
-      $genomat[(($n-$startIND)*2)][$snpon]=$gtv[0];
-      $genomat[(($n-$startIND)*2+1)][$snpon]=$gtv[1];
+      $genomat[(($n-$startIND)*$ploidy)][$snpon]=$gtv[0];
+      if($ploidy>1){
+	my $t2=($n-$startIND)*2+1;
+	$genomat[(($n-$startIND)*$ploidy+1)][$snpon]=$gtv[1];
+      }
     }
     $snpon += 1;
   }
@@ -191,7 +193,7 @@ for (my $a=0 ; $a < $numsplits ; $a+=1) {
     print OUTP "$nsnps\n";
     print OUTP "P @posvec\n";
   }
-   for (my $i=0; $i < (2*($endIND-$startIND)); $i+=1)
+   for (my $i=0; $i < ($ploidy*($endIND-$startIND)); $i+=1)
     {
       for (my $j=0; $j < $nsnps; $j+=1)
 	{
