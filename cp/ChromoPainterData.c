@@ -448,8 +448,15 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
     //    Data->condhaps = Data->nhaps;
     Data->reciphaps = 0;
     for(i=Datamain->nhapstotal;i<Data->nhapstotal;++i){
-      if(Ids->include_ind_vec[(int)floor((i+Datamain->nhapstotal)/Data->hapsperind)]) ++Data->reciphaps;
+      //      if(Par->verbose) fprintf(Par->out,"Checking recipient haplotype %i for inclusion (%i)\n",
+      // (int)floor((i+Datamain->nhapstotal)/Data->hapsperind),
+      // Ids->include_ind_vec[(int)floor((i+Datamain->nhapstotal)/Data->hapsperind)]);
+
+// if(Ids->include_ind_vec[(int)floor((i+Datamain->nhapstotal)/Data->hapsperind)]);
+      ++Data->reciphaps;
     }
+    if(Par->verbose) fprintf(Par->out,"Using %i recipient haplotypes\n",Data->reciphaps);
+
     // remove the data objects we don't need
     free(Datarecip->positions);
     free(Datarecip->lambda);
