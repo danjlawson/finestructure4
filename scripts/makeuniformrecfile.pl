@@ -19,7 +19,7 @@ sub help(){
 print "Usage ./makeuniformrecfile.pl <options> <phasefile> <outputfile>\n";
 print "     <phasefile> is a valid chromopainter inputfile ending in .phase (in ChromoPainter v1 or v2 format) \n";
 print("     <outputfile> will be a recombination file usable with <phasefile> in ChromoPainter, nominally in Morgans/base.\n");
-print("options:\n-c:      <centimorgans per base>: default 1/10000000\n");
+print("options:\n-c:      <Morgans per base>: default 1/10000000\n");
 print("The recombination rate is scaled to be approximately that in humans (1 centi-Morgan/Mb, or 100Mb for one Morgan). Because of this, it will NOT be usable directly and should only ever be used in conjunction with EM parameter estimation, which corrects for the global amount of recombination. If you are working on non-humans or simulated data, you may experience problems with EM estimation. The parameter may get stuck at a local mode where there is effectively infinite (or no) recombination. In this case, you should specify the initial conditions of ChromoPainter to have a much smaller or larger Ne (-n) value.\n");
 die "\n";
 }
