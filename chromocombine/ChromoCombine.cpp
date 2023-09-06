@@ -77,7 +77,7 @@ int chromocombine(int argc, char *argv[])
   ccw.completegenomes=false;
   bool usedir=false;
   bool saferun=true;
-  char c;
+  signed char c;
   optind=1;
   while ((c = getopt (argc, argv, "o:e:E:f:F:i:vCudclmthq")) != -1) switch (c){
     case('o'):ccw.outputfileroot=string(optarg);break;
