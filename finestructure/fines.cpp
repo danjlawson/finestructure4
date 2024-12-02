@@ -747,6 +747,7 @@ int finestructure(int argc, char *argv[])
 	}
 	infMCMC->exportXmlTail(&os);
 	delete(infMCMC);
+	delete(state2);
 	}catch(std::string x){cout<<"Tree creation error: "<<x<<endl;}
 /// (SEMI) DETERMINISTIC MODELS
     }else if (opt.method.compare(0,1,"S")==0) {// split tree
