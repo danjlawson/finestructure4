@@ -169,7 +169,7 @@ void FsProject::defineParameters()
   sectionnames.push_back("1");
   sectioncomments.push_back("ChromoPainter Stage1-2 generic properties");
   pars.push_back(FsPar("s12inputtype",1,"What type of data input (currently only \"phase\" supported)"));
-  pars.push_back(FsPar("idfile",1,"IDfile location, containing the labels of each individual. REQUIRED, no default (unless -createids or -popidfile is used)."));
+  pars.push_back(FsPar("idfile",1,"IDfile location, containing the labels of each individual. REQUIRED, no default (unless -popidfile is used)."));
   pars.push_back(FsPar("s12args",1,"arguments to be passed to Chromopainter (default: empty)"));
   parsize.push_back(pars.size());
 

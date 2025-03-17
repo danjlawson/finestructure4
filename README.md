@@ -12,6 +12,8 @@ Important Note: fs4 includes ChromoPainter, which have different licences and au
 
 Please consider [Registering](https://forms.office.com/Pages/ResponsePage.aspx?id=MH_ksn3NTkql2rGM8aQVGwBpDrkt7zVLlSvbqowMvq1UQzNXV1hMQkE1QzBNTDJPS0JEWFE4TDFaVi4u), if you have not already done so.
 
+This codebase can compile to produce `fs`, the binary executable for finestructure (and chromopainter), as well as `mixPainter` which is a limited version made for simple use of [badMIXTURE](https://github.com/danjlawson/badMIXTURE).
+
 ## Technical details:
 
 NB Installation instructions are below: Linux and Mac OS X should work fully.
@@ -60,6 +62,20 @@ If you are compiling on a Mac, the default C compiler (clang) does not support m
 ```
 
 (substitute your CXX version). This is implemented in ./configure.mac so that you don't have to remember each time.
+
+If your toolchain is a little different, try recreating the configure file:
+
+```{sh}
+./autogen.sh
+```
+
+This script requires a more complex toolchain, noteable `automake` and `autoreconf`, which can usually be installed via `brew` (for mac), apt-get (for Ubuntu), or other package manager.
+
+To compile `mixPainter`, ince you are able to compile fs with the above `make` command, simply run:
+
+```{sh}
+make mixPainter
+```
 
 ### Dependencies
 
