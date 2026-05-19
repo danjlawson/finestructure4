@@ -89,6 +89,7 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
     {
       Alphasumnew = 0.0;
       large_num = -1.0*Alphasum;
+      double exp_AsLN = exp(Alphasum+large_num);  // loop-invariant in i
 #pragma omp parallel for reduction(+:Alphasumnew) private(ObsStateProb) schedule(static)
       for (i=0; i < *p_Nhaps; i++)
 	{
@@ -100,9 +101,12 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
 	    ObsStateProb = (1-MutProb_vec[i]) * (newh[locus] == existing_h[i][locus]) + MutProb_vec[i] * (newh[locus] != existing_h[i][locus]);
 	  }
 
-	  Alphamat[i][locus] = log(ObsStateProb*copy_prob[i]*exp(Alphasum+large_num) + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[i][(locus-1)]+large_num)) - large_num;
-	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + exp(Alphamat[i][locus]+large_num)*TransProb[locus];
-	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + exp(Alphamat[i][locus]+large_num);
+	  // Pre-log value; Alphamat = log(Anew) - large_num, so
+	  // exp(Alphamat+large_num) == Anew (skip the log/exp roundtrip).
+	  double Anew = ObsStateProb*copy_prob[i]*exp_AsLN + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[i][(locus-1)]+large_num);
+	  Alphamat[i][locus] = log(Anew) - large_num;
+	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew*TransProb[locus];
+	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew;
 	}
       Alphasum = log(Alphasumnew)-large_num;
     }
@@ -245,28 +249,33 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  }
 	  
 	  BetavecCURRENT[i] = log(exp(Betasum+large_num) + (1-TransProb[locus]) * ObsStateProbPREV*exp(BetavecPREV[i] + large_num)) - large_num;
+	  // Cache the 3 unique exp(...) values that get re-used ~10 times
+	  // across the assignments below. ~7-20x exp() calls saved per (locus,i).
+	  double e_a_lp1_bp = exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum);
+	  double e_a_l_bp   = exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum);
+	  double e_a_l_bc   = exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum);
 	  if (locus > 0) Betasumnew = Betasumnew + TransProb[(locus-1)]*copy_prob[i]*ObsStateProb*exp(BetavecCURRENT[i] + large_num);
 	  if (locus == 0) copy_prob_newSTART[i] = exp(Alphamat[i][0] + BetavecCURRENT[i] - Alphasum);
-	  total_prob = total_prob + exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]);
+	  total_prob = total_prob + e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]);
 
-	  copy_prob_new[i] = copy_prob_new[i] + exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]);
+	  copy_prob_new[i] = copy_prob_new[i] + e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]);
 
-	  total_prob_from_i_to_i = exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_to_i_exclude_i = exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_from_i_exclude_i = exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum) - exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_from_any_to_any_exclude_i = 1.0-exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum)-exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)+exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_i_to_i = e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_to_i_exclude_i = e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_i_exclude_i = e_a_l_bc - e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_any_to_any_exclude_i = 1.0-e_a_l_bc-e_a_lp1_bp+e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
 	  
-	  regional_chunk_count[i]=regional_chunk_count[i]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
-	  total_regional_chunk_count=total_regional_chunk_count+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
+	  regional_chunk_count[i]=regional_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
+	  total_regional_chunk_count=total_regional_chunk_count+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 #pragma omp atomic
-	  ind_snp_sum_vec[pop_vec[i]]=ind_snp_sum_vec[pop_vec[i]]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
+	  ind_snp_sum_vec[pop_vec[i]]=ind_snp_sum_vec[pop_vec[i]]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  
-	  corrected_chunk_count[i]=corrected_chunk_count[i]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
+	  corrected_chunk_count[i]=corrected_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  if (Par->unlinked_ind==0 && lambda[locus]>=0) expected_chunk_length[i]=expected_chunk_length[i]+100*(pos[locus+1]-pos[locus])*delta*lambda[locus]*(constant_from_i_to_i*total_prob_from_i_to_i+constant_exclude_i*(total_prob_to_i_exclude_i+total_prob_from_i_exclude_i)+constant_exclude_i_both_sides*total_prob_from_any_to_any_exclude_i);  // multiply by 100 to get cM
 	  expected_chunk_length_sum=expected_chunk_length_sum+constant_from_i_to_i*total_prob_from_i_to_i+constant_exclude_i*(total_prob_to_i_exclude_i+total_prob_from_i_exclude_i)+constant_exclude_i_both_sides*total_prob_from_any_to_any_exclude_i;
 
 	  // for estimating new mutation rates:
-	  expected_differences[i]=expected_differences[i]+exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum)*(newh[locus] != existing_h[i][locus]);
+	  expected_differences[i]=expected_differences[i]+e_a_l_bc*(newh[locus] != existing_h[i][locus]);
 	  BetavecPREV[i] = BetavecCURRENT[i];
 
 #pragma omp atomic
