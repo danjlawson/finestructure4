@@ -89,7 +89,8 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
     {
       Alphasumnew = 0.0;
       large_num = -1.0*Alphasum;
-      double exp_AsLN = exp(Alphasum+large_num);  // loop-invariant in i
+      // Note: exp(Alphasum + large_num) = exp(0) = 1.0 exactly under
+      // IEEE 754 (large_num = -Alphasum), so the first term simplifies.
 #pragma omp parallel for reduction(+:Alphasumnew) private(ObsStateProb) schedule(static)
       for (i=0; i < *p_Nhaps; i++)
 	{
@@ -103,7 +104,7 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
 
 	  // Pre-log value; Alphamat = log(Anew) - large_num, so
 	  // exp(Alphamat+large_num) == Anew (skip the log/exp roundtrip).
-	  double Anew = ObsStateProb*copy_prob[i]*exp_AsLN + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[(locus-1)][i]+large_num);
+	  double Anew = ObsStateProb*copy_prob[i] + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[(locus-1)][i]+large_num);
 	  Alphamat[locus][i] = log(Anew) - large_num;
 	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew*TransProb[locus];
 	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew;
