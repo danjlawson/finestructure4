@@ -229,7 +229,7 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  for (i=0; i < ndonorpops; i++)
 	    exp_copy_pop[i]=0.0;
 	}
-#pragma omp parallel for reduction(+:Betasumnew,total_prob,total_regional_chunk_count,expected_chunk_length_sum,sum_prob) private(ObsStateProb,ObsStateProbPREV,total_prob_from_i_to_i,total_prob_to_i_exclude_i,total_prob_from_i_exclude_i,total_prob_from_any_to_any_exclude_i) schedule(static)
+#pragma omp parallel for reduction(+:Betasumnew,total_prob,total_regional_chunk_count,expected_chunk_length_sum,sum_prob) reduction(+:ind_snp_sum_vec[:ndonorpops]) reduction(+:exp_copy_pop[:ndonorpops]) private(ObsStateProb,ObsStateProbPREV,total_prob_from_i_to_i,total_prob_to_i_exclude_i,total_prob_from_i_exclude_i,total_prob_from_any_to_any_exclude_i) schedule(static)
       for (i = 0; i < *p_Nhaps; i++)
 	{
 	  if(newh[locus]==9) {
@@ -267,7 +267,6 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  
 	  regional_chunk_count[i]=regional_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  total_regional_chunk_count=total_regional_chunk_count+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
-#pragma omp atomic
 	  ind_snp_sum_vec[pop_vec[i]]=ind_snp_sum_vec[pop_vec[i]]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  
 	  corrected_chunk_count[i]=corrected_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
@@ -278,7 +277,6 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  expected_differences[i]=expected_differences[i]+e_a_l_bc*(newh[locus] != existing_h[i][locus]);
 	  BetavecPREV[i] = BetavecCURRENT[i];
 
-#pragma omp atomic
 	  if (finalrun) exp_copy_pop[pop_vec[i]]=exp_copy_pop[pop_vec[i]]+exp(BetavecCURRENT[i]+Alphamat[i][locus]-Alphasum);
 
 	  sum_prob=sum_prob+total_prob_from_i_to_i+total_prob_to_i_exclude_i+total_prob_from_i_exclude_i;
