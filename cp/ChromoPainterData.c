@@ -491,9 +491,9 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
 			    Data->nhapstotal,
 			    Data->nhaps);
   }
-  Data->all_chromosomes=malloc(Data->nhapstotal*sizeof(int *));
-  Data->cond_chromosomes=malloc(Data->condhaps*sizeof(int *));
-  Data->ind_chromosomes=malloc(Data->hapsperind*sizeof(int *));
+  Data->all_chromosomes=malloc(Data->nhapstotal*sizeof(signed char *));
+  Data->cond_chromosomes=malloc(Data->condhaps*sizeof(signed char *));
+  Data->ind_chromosomes=malloc(Data->hapsperind*sizeof(signed char *));
 
   // Condition and recipient individuals
   Data->condnums = malloc((Data->condhaps)/Data->hapsperind*sizeof(int));
@@ -529,8 +529,8 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
   
   for (i=0; i<Data->nhapstotal; i++){
     if(Ids->include_ind_vec[(int)floor(i/Data->hapsperind)]) {
-      Data->all_chromosomes[i]=malloc(Data->nsnps*sizeof(int));
-    }else Data->all_chromosomes[i]=malloc(0*sizeof(int));// malloc for easy free later
+      Data->all_chromosomes[i]=malloc(Data->nsnps*sizeof(signed char));
+    }else Data->all_chromosomes[i]=malloc(0*sizeof(signed char));// malloc for easy free later
   }
 
 
@@ -560,11 +560,12 @@ struct data_t *ReadData(struct infiles_t *Infiles, struct ids_t *Ids,struct para
 	  fprintf(Par->out,"Trying to read the %dth snp, yet we can only have %d. Exiting...\n",jj,Data->nsnps);
 	  stop_on_error(1,Par->errormode,Par->err);
 	}
-	Data->all_chromosomes[i][jj]=codeHaplotypes(line[j]);
-	if(Data->all_chromosomes[i][jj]<0) {
+	int hapcode=codeHaplotypes(line[j]);
+	if(hapcode<0) {
 	  fprintf(Par->out,"Allele-type \"%c\" invalid for hap%d, snp%d. Exiting...\n",line[j],i+1,j+1);
 	  stop_on_error(1,Par->errormode,Par->err);
 	}
+	Data->all_chromosomes[i][jj]=hapcode;
       }
       if(Par->vverbose){ fprintf(Par->out," : ");
 	  int t;

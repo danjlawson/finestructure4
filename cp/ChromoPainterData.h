@@ -47,7 +47,7 @@ extern "C" {
     int *condnums; // the line number of the conditioned haplotypes in the sorting of the phase file (starting at 0 for the first haplotype)
     int *recipnums; // the line number of the painted haplotypes in the sorting of the phase file (starting at 0 for the first haplotype)
 
-    int **all_chromosomes; // all the chromosomes
+    signed char **all_chromosomes; // all the chromosomes
 
     // Things for the current painting
     int currentind; /// The current individual being painted, for which cond_chromosomes and ind_chromosomes are configured
@@ -55,8 +55,8 @@ extern "C" {
     int current_donor_nind; // number of donor individuals
     int* current_donor_inds; // indices of donor individuals
     int* current_donor_haps; // indices of donor haplotypes
-    int **cond_chromosomes; // just those chromosomes being conditioned on NOW, i.e. length of the ploidy of the data
-    int **ind_chromosomes; // just those chromosomes being painted
+    signed char **cond_chromosomes; // chromosomes conditioned on now (count = ploidy)
+    signed char **ind_chromosomes; // chromosomes being painted
   };
 
 
