@@ -81,17 +81,29 @@ double forwardAlgorithm(signed char * newh, signed char ** existing_h, double **
 
   if(Par->vverbose) fprintf(Par->out,"        forward Algorithm (initialising) \n");
   double Alphasum = InitialiseForward(newh, existing_h, Alphamat, MutProb_vec,p_Nhaps,p_Nloci,copy_probSTART,TransProb);
+  /* Per-locus Anew buffer for the fixed-order Alphasumnew sum below. */
+  double * cp_anew = malloc(((size_t)*p_Nhaps) * sizeof(double));
 
   if(Par->vverbose) fprintf(Par->out,"        forward Algorithm (computing) \n");
 
   // Perform the forward pass
   for (locus=1; locus < *p_Nloci; locus++)
     {
-      Alphasumnew = 0.0;
       large_num = -1.0*Alphasum;
       // Note: exp(Alphasum + large_num) = exp(0) = 1.0 exactly under
       // IEEE 754 (large_num = -Alphasum), so the first term simplifies.
-#pragma omp parallel for reduction(+:Alphasumnew) private(ObsStateProb) schedule(static)
+      /* No reduction(+:Alphasumnew): libgomp combines thread partials in
+         nondeterministic order, so the old result varied run-to-run. Each
+         thread writes its own Anew; Alphasumnew is summed in one pass below.
+         This makes the forward pass reproducible run-to-run and across
+         thread counts FOR A GIVEN BINARY -- exactly what in-memory checkpoint
+         recompute needs (forward and recompute run in one process/binary).
+         Caveat: -funsafe-math-optimizations (in OPTIMIZATION) may vectorize
+         the sum into partial accumulators, so the exact low bits are
+         per-build (vector width / -march / compiler); cross-build raw-double
+         identity is neither guaranteed nor required. Output is unchanged at
+         calibration (printed) precision. */
+#pragma omp parallel for private(ObsStateProb) schedule(static)
       for (i=0; i < *p_Nhaps; i++)
 	{
 	  if(newh[locus]==9) {
@@ -106,11 +118,19 @@ double forwardAlgorithm(signed char * newh, signed char ** existing_h, double **
 	  // exp(Alphamat+large_num) == Anew (skip the log/exp roundtrip).
 	  double Anew = ObsStateProb*copy_prob[i] + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[(locus-1)][i]+large_num);
 	  Alphamat[locus][i] = log(Anew) - large_num;
-	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew*TransProb[locus];
-	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew;
+	  cp_anew[i] = Anew;
 	}
+      /* tp folds the two old (locus<last ? *TransProb : *1.0) cases into one
+         loop; *1.0 is exact under IEEE-754 so the per-element products and
+         the sum are bit-identical to the two-loop form. */
+      double tp = (locus < (*p_Nloci - 1)) ? TransProb[locus] : 1.0;
+      Alphasumnew = 0.0;
+      for (i=0; i < *p_Nhaps; i++) Alphasumnew += cp_anew[i]*tp;
       Alphasum = log(Alphasumnew)-large_num;
     }
+  /* cp_anew is dead past the forward loop; free it here so the NaN error
+     path below (stop_on_error -> longjmp) can't leak it. */
+  free(cp_anew);
 
   // Check that all is well
 
