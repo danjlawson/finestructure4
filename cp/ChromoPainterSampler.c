@@ -1,4 +1,5 @@
 #include "ChromoPainterSampler.h"
+#include <omp.h>
 
 #include <time.h>
 
@@ -58,8 +59,8 @@ double InitialiseForward(int * newh, int ** existing_h, double ** Alphamat, doub
 	ObsStateProb = (1-MutProb_vec[i]) * (newh[0] == existing_h[i][0]) + MutProb_vec[i] * (newh[0] != existing_h[i][0]);
       }
       
-      Alphamat[i][0] = log(copy_probSTART[i]*ObsStateProb);
-      Alphasum = Alphasum + exp(Alphamat[i][0])*TransProb[0];
+      Alphamat[0][i] = log(copy_probSTART[i]*ObsStateProb);
+      Alphasum = Alphasum + exp(Alphamat[0][i])*TransProb[0];
     }
   Alphasum=log(Alphasum);
   return(Alphasum);
@@ -88,6 +89,9 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
     {
       Alphasumnew = 0.0;
       large_num = -1.0*Alphasum;
+      // Note: exp(Alphasum + large_num) = exp(0) = 1.0 exactly under
+      // IEEE 754 (large_num = -Alphasum), so the first term simplifies.
+#pragma omp parallel for reduction(+:Alphasumnew) private(ObsStateProb) schedule(static)
       for (i=0; i < *p_Nhaps; i++)
 	{
 	  if(newh[locus]==9) {
@@ -98,9 +102,12 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
 	    ObsStateProb = (1-MutProb_vec[i]) * (newh[locus] == existing_h[i][locus]) + MutProb_vec[i] * (newh[locus] != existing_h[i][locus]);
 	  }
 
-	  Alphamat[i][locus] = log(ObsStateProb*copy_prob[i]*exp(Alphasum+large_num) + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[i][(locus-1)]+large_num)) - large_num;
-	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + exp(Alphamat[i][locus]+large_num)*TransProb[locus];
-	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + exp(Alphamat[i][locus]+large_num);
+	  // Pre-log value; Alphamat = log(Anew) - large_num, so
+	  // exp(Alphamat+large_num) == Anew (skip the log/exp roundtrip).
+	  double Anew = ObsStateProb*copy_prob[i] + ObsStateProb*(1-TransProb[(locus-1)])*exp(Alphamat[(locus-1)][i]+large_num);
+	  Alphamat[locus][i] = log(Anew) - large_num;
+	  if (locus < (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew*TransProb[locus];
+	  if (locus == (*p_Nloci - 1)) Alphasumnew = Alphasumnew + Anew;
 	}
       Alphasum = log(Alphasumnew)-large_num;
     }
@@ -116,7 +123,7 @@ double forwardAlgorithm(int * newh, int ** existing_h, double ** Alphamat, doubl
       /* 	  fprintf(Par->out,"LOCUS %i ",locus); */
       /* 	  for (i=0; i < *p_Nhaps; i++) */
       /* 	    { */
-      /* 	      fprintf(Par->out," %f",Alphamat[i][locus]); */
+      /* 	      fprintf(Par->out," %f",Alphamat[locus][i]); */
       /* 	    } */
       /* 	  fprintf(Par->out,"\n"); */
       /* 	} */
@@ -195,10 +202,10 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 
       BetavecPREV[i] = 0.0;
       Betasum = Betasum + TransProb[(*p_Nloci-2)]*copy_prob[i]*ObsStateProb*exp(BetavecPREV[i]);
-      if (finalrun) exp_copy_pop[pop_vec[i]]=exp_copy_pop[pop_vec[i]]+exp(BetavecPREV[i]+Alphamat[i][(*p_Nloci-1)]-Alphasum);
+      if (finalrun) exp_copy_pop[pop_vec[i]]=exp_copy_pop[pop_vec[i]]+exp(BetavecPREV[i]+Alphamat[(*p_Nloci-1)][i]-Alphasum);
 
       // for estimating new mutation rates:
-      expected_differences[i]=expected_differences[i]+exp(Alphamat[i][(*p_Nloci-1)]-Alphasum)*(newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
+      expected_differences[i]=expected_differences[i]+exp(Alphamat[(*p_Nloci-1)][i]-Alphasum)*(newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
     }
   if (finalrun)  printCopyProbs(exp_copy_pop,ind_val,pos[*p_Nloci-1],Outfiles,Par);
 
@@ -223,6 +230,7 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  for (i=0; i < ndonorpops; i++)
 	    exp_copy_pop[i]=0.0;
 	}
+#pragma omp parallel for reduction(+:Betasumnew,total_prob,total_regional_chunk_count,expected_chunk_length_sum,sum_prob) reduction(+:ind_snp_sum_vec[:ndonorpops]) reduction(+:exp_copy_pop[:ndonorpops]) private(ObsStateProb,ObsStateProbPREV,total_prob_from_i_to_i,total_prob_to_i_exclude_i,total_prob_from_i_exclude_i,total_prob_from_any_to_any_exclude_i) schedule(static)
       for (i = 0; i < *p_Nhaps; i++)
 	{
 	  if(newh[locus]==9) {
@@ -242,30 +250,35 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 	  }
 	  
 	  BetavecCURRENT[i] = log(exp(Betasum+large_num) + (1-TransProb[locus]) * ObsStateProbPREV*exp(BetavecPREV[i] + large_num)) - large_num;
+	  // Cache the 3 unique exp(...) values that get re-used ~10 times
+	  // across the assignments below. ~7-20x exp() calls saved per (locus,i).
+	  double e_a_lp1_bp = exp(Alphamat[(locus+1)][i]+BetavecPREV[i]-Alphasum);
+	  double e_a_l_bp   = exp(Alphamat[locus][i]+BetavecPREV[i]-Alphasum);
+	  double e_a_l_bc   = exp(Alphamat[locus][i]+BetavecCURRENT[i]-Alphasum);
 	  if (locus > 0) Betasumnew = Betasumnew + TransProb[(locus-1)]*copy_prob[i]*ObsStateProb*exp(BetavecCURRENT[i] + large_num);
-	  if (locus == 0) copy_prob_newSTART[i] = exp(Alphamat[i][0] + BetavecCURRENT[i] - Alphasum);
-	  total_prob = total_prob + exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]);
+	  if (locus == 0) copy_prob_newSTART[i] = exp(Alphamat[0][i] + BetavecCURRENT[i] - Alphasum);
+	  total_prob = total_prob + e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]);
 
-	  copy_prob_new[i] = copy_prob_new[i] + exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]);
+	  copy_prob_new[i] = copy_prob_new[i] + e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]);
 
-	  total_prob_from_i_to_i = exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_to_i_exclude_i = exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_from_i_exclude_i = exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum) - exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
-	  total_prob_from_any_to_any_exclude_i = 1.0-exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum)-exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)+exp(Alphamat[i][locus]+BetavecPREV[i]-Alphasum)*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_i_to_i = e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_to_i_exclude_i = e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_i_exclude_i = e_a_l_bc - e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
+	  total_prob_from_any_to_any_exclude_i = 1.0-e_a_l_bc-e_a_lp1_bp+e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]+TransProb[locus]*copy_prob[i]);
 	  
-	  regional_chunk_count[i]=regional_chunk_count[i]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
-	  total_regional_chunk_count=total_regional_chunk_count+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
-	  ind_snp_sum_vec[pop_vec[i]]=ind_snp_sum_vec[pop_vec[i]]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
+	  regional_chunk_count[i]=regional_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
+	  total_regional_chunk_count=total_regional_chunk_count+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
+	  ind_snp_sum_vec[pop_vec[i]]=ind_snp_sum_vec[pop_vec[i]]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  
-	  corrected_chunk_count[i]=corrected_chunk_count[i]+(exp(Alphamat[i][(locus+1)]+BetavecPREV[i]-Alphasum)-exp(Alphamat[i][locus]+BetavecPREV[i]- Alphasum)*ObsStateProbPREV*(1-TransProb[locus]));
+	  corrected_chunk_count[i]=corrected_chunk_count[i]+(e_a_lp1_bp-e_a_l_bp*ObsStateProbPREV*(1-TransProb[locus]));
 	  if (Par->unlinked_ind==0 && lambda[locus]>=0) expected_chunk_length[i]=expected_chunk_length[i]+100*(pos[locus+1]-pos[locus])*delta*lambda[locus]*(constant_from_i_to_i*total_prob_from_i_to_i+constant_exclude_i*(total_prob_to_i_exclude_i+total_prob_from_i_exclude_i)+constant_exclude_i_both_sides*total_prob_from_any_to_any_exclude_i);  // multiply by 100 to get cM
 	  expected_chunk_length_sum=expected_chunk_length_sum+constant_from_i_to_i*total_prob_from_i_to_i+constant_exclude_i*(total_prob_to_i_exclude_i+total_prob_from_i_exclude_i)+constant_exclude_i_both_sides*total_prob_from_any_to_any_exclude_i;
 
 	  // for estimating new mutation rates:
-	  expected_differences[i]=expected_differences[i]+exp(Alphamat[i][locus]+BetavecCURRENT[i]-Alphasum)*(newh[locus] != existing_h[i][locus]);
+	  expected_differences[i]=expected_differences[i]+e_a_l_bc*(newh[locus] != existing_h[i][locus]);
 	  BetavecPREV[i] = BetavecCURRENT[i];
 
-	  if (finalrun) exp_copy_pop[pop_vec[i]]=exp_copy_pop[pop_vec[i]]+exp(BetavecCURRENT[i]+Alphamat[i][locus]-Alphasum);
+	  if (finalrun) exp_copy_pop[pop_vec[i]]=exp_copy_pop[pop_vec[i]]+exp(BetavecCURRENT[i]+Alphamat[locus][i]-Alphasum);
 
 	  sum_prob=sum_prob+total_prob_from_i_to_i+total_prob_to_i_exclude_i+total_prob_from_i_exclude_i;
 
@@ -362,7 +375,14 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
   double random_unif, random_unifSWITCH;
   double no_switch_prob;
   double large_num;
-  double ** Alphamat = malloc(*p_Nhaps * sizeof(double *));
+  // Alphamat is COLUMN-MAJOR (haps): Alphamat[locus] is a contiguous
+  // array of n_haps doubles. The hot inner loop iterates `i` for
+  // fixed `locus`, so consecutive `i` accesses land on adjacent cache
+  // line bytes -> vectorizable, prefetcher-friendly. One huge contiguous
+  // storage block (~40 GB for chr1) avoids the jagged-2D TLB pressure
+  // of the upstream code.
+  double * Alphamat_storage = malloc(((size_t)*p_Nloci) * ((size_t)*p_Nhaps) * sizeof(double));
+  double ** Alphamat = malloc(*p_Nloci * sizeof(double *));
   double * copy_prob_new = malloc(*p_Nhaps * sizeof(double));
   double * copy_prob_newSTART = malloc(*p_Nhaps * sizeof(double));
   double * Alphasumvec = malloc(*p_Nloci * sizeof(double));
@@ -375,9 +395,12 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
 
   if(Par->vverbose) fprintf(Par->out,"        sampler: initializing\n");
 
-  for(i=0 ; i< *p_Nhaps ; i++)
+  // Each Alphamat[locus] points to the locus-th column of n_haps
+  // doubles within Alphamat_storage. We reuse `i` as a generic
+  // counter for `locus` here to avoid declaring a new variable.
+  for(i=0 ; i< *p_Nloci ; i++)
     {
-      Alphamat[i] = malloc(*p_Nloci * sizeof(double));
+      Alphamat[i] = Alphamat_storage + ((size_t)i) * ((size_t)*p_Nhaps);
     }
   for (i=0; i < ndonorpops; i++)
     {
@@ -426,15 +449,15 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
        for (locus=0; locus < *p_Nloci; locus++)
 	 {
 	   Alphasumvec[locus] = 0.0;
-	   large_num = Alphamat[0][locus];
+	   large_num = Alphamat[locus][0];
 	   for (i = 1; i < *p_Nhaps; i++)
 	     {
-	       if (Alphamat[i][locus] > large_num)
-		 large_num = Alphamat[i][locus];
+	       if (Alphamat[locus][i] > large_num)
+		 large_num = Alphamat[locus][i];
 	     }
 	   large_num = -1.0*large_num;
 	   for (i = 0; i < *p_Nhaps; i++)
-	     Alphasumvec[locus] = Alphasumvec[locus] + exp(Alphamat[i][locus]+large_num);
+	     Alphasumvec[locus] = Alphasumvec[locus] + exp(Alphamat[locus][i]+large_num);
 	   Alphasumvec[locus] = log(Alphasumvec[locus]) - large_num;
 	 }
 
@@ -444,11 +467,11 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
 	   //fprintf(Par->out,"sample %d\n",j);
 	      /* sample last position: */
 	   total_prob = 0.0;
-	   large_num = Alphamat[0][(*p_Nloci-1)];
+	   large_num = Alphamat[(*p_Nloci-1)][0];
 	   for (i = 1; i < *p_Nhaps; i++)
 	     {
-	       if (Alphamat[i][(*p_Nloci-1)] > large_num)
-		 large_num = Alphamat[i][(*p_Nloci-1)];
+	       if (Alphamat[(*p_Nloci-1)][i] > large_num)
+		 large_num = Alphamat[(*p_Nloci-1)][i];
 	     }
 	   large_num = -1.0*large_num;
 	   random_unif = (double) rand()/RAND_MAX;
@@ -456,7 +479,7 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
 	   prob = 0.0;
 	   for (i = 0; i < *p_Nhaps; i++)
 	     {
-	       prob = prob + exp(Alphamat[i][(*p_Nloci-1)]+large_num);
+	       prob = prob + exp(Alphamat[(*p_Nloci-1)][i]+large_num);
 	       if (random_unif <= exp(log(prob)-large_num-total_prob))
 		 {
 		   sample_state[(*p_Nloci-1)] = i;
@@ -470,20 +493,20 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
 	        // first sample prob you switch and see if you need to
                    // if you do need to switch, you need to go through the below loop to figure out where to switch to
                large_num = -1.0 * Alphasumvec[locus];
-	       total_prob = log(exp(Alphasumvec[locus]+large_num)*TransProb[locus]*copy_prob[sample_state[(locus+1)]] + exp(Alphamat[sample_state[(locus+1)]][locus]+large_num)*(1.0-TransProb[locus]))-large_num;
-	       no_switch_prob = exp(log(exp(Alphamat[sample_state[(locus+1)]][locus]+large_num)*(1.0-TransProb[locus])) - large_num - total_prob);
+	       total_prob = log(exp(Alphasumvec[locus]+large_num)*TransProb[locus]*copy_prob[sample_state[(locus+1)]] + exp(Alphamat[locus][sample_state[(locus+1)]]+large_num)*(1.0-TransProb[locus]))-large_num;
+	       no_switch_prob = exp(log(exp(Alphamat[locus][sample_state[(locus+1)]]+large_num)*(1.0-TransProb[locus])) - large_num - total_prob);
                random_unifSWITCH = (double) rand()/RAND_MAX;
 	       if (random_unifSWITCH <= no_switch_prob) sample_state[locus] = sample_state[(locus+1)];
 
-	       //if (j ==0 && locus > 9500) fprintf(Par->out,"%d %d %lf %lf %lf %lf %lf\n",locus,sample_state[(locus+1)],no_switch_prob,Alphamat[sample_state[(locus+1)]][locus],large_num,total_prob,1.0-TransProb[locus]);
+	       //if (j ==0 && locus > 9500) fprintf(Par->out,"%d %d %lf %lf %lf %lf %lf\n",locus,sample_state[(locus+1)],no_switch_prob,Alphamat[locus][sample_state[(locus+1)]],large_num,total_prob,1.0-TransProb[locus]);
                if (random_unifSWITCH > no_switch_prob)
 		 {
 		   total_prob = 0.0;
-		   large_num = Alphamat[0][locus];
+		   large_num = Alphamat[locus][0];
 		   for (i = 1; i < *p_Nhaps; i++)
 		     {
-		       if (Alphamat[i][locus] > large_num)
-			 large_num = Alphamat[i][locus];
+		       if (Alphamat[locus][i] > large_num)
+			 large_num = Alphamat[locus][i];
 		     }
 		   large_num = -1.0*large_num;
 
@@ -492,7 +515,7 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
 		   prob = 0.0;
 		   for (i = 0; i < *p_Nhaps; i++)
 		     {
-		       prob = prob + exp(Alphamat[i][locus]+large_num)*TransProb[locus]*copy_prob[sample_state[(locus+1)]];
+		       prob = prob + exp(Alphamat[locus][i]+large_num)*TransProb[locus]*copy_prob[sample_state[(locus+1)]];
 		       if (random_unif <= exp(log(prob)-large_num-total_prob))
 			 {
 			   sample_state[locus] = i;
@@ -534,10 +557,9 @@ double ** sampler(double ** copy_prob_new_mat, int * newh, int ** existing_h, in
    copy_prob_new_mat[1][(*p_Nhaps)] = num_regions;
 
    if(Par->vverbose) fprintf(Par->out,"        sampler: freeing memory.\n");
-   for (i=0; i < *p_Nhaps; i++)
-     {
-       free(Alphamat[i]);
-     }
+   // One free for the contiguous storage, one for the row-pointer
+   // array. No per-row frees (no per-row mallocs).
+   free(Alphamat_storage);
    free(Alphamat);
    free(TransProb);
    free(sample_state);
