@@ -192,9 +192,9 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
   for(i=0; i < *p_Nhaps; i++)
     {
       
-	  if(newh[locus]==9) {
+	  if(newh[(*p_Nloci-1)]==9) {
 	    ObsStateProb=1.0;
-	  }else if(newh[locus]==8) {
+	  }else if(newh[(*p_Nloci-1)]==8) {
 	    ObsStateProb = (1-SMALL_NUM) * (newh[(*p_Nloci-1)] == existing_h[i][(*p_Nloci-1)]) + SMALL_NUM * (newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
 	  }else{
 	    ObsStateProb = (1-MutProb_vec[i]) * (newh[(*p_Nloci-1)] == existing_h[i][(*p_Nloci-1)]) + MutProb_vec[i] * (newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
