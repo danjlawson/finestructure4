@@ -1,0 +1,14 @@
+win/
+win*.phase
+win*.recom
+out/
+__pycache__/
+*.cp.*
+cpfold
+*.bin
+*.o
+# dev scaffolding (not part of the fold)
+*_PLAN.md
+verify_ne_diff
+verify_ne_diff.c
+oracle/fold_sampler_prototype.py

@@ -2,6 +2,7 @@
 #include <setjmp.h>
 #include "ChromoPainterMutEM.h"
 #include "ChromoPainterConstants.h"
+#include "ChromoPainterFold.h"   /* cpfold_cleanup(): release the retained -fold donor panel */
 
 
 
@@ -168,6 +169,16 @@ void assignParameters(struct param_t *Par,struct infiles_t *Infiles,struct files
 	 Par->haploid_ind=1;
        if (strcmp(argv[i],"-u")==0)
 	 Par->unlinked_ind=1;
+       if (strcmp(argv[i],"-fold")==0)
+	 Par->use_fold=1;
+       if (strcmp(argv[i],"-foldU")==0) {
+	 if (i+1>=argc || argv[i+1][0]=='-' || atoi(argv[i+1])<2) {
+	   fprintf(Par->out,"-foldU requires an integer argument >= 2. Exiting...\n");
+	   stop_on_error(1,Par->errormode,Par->err);
+	 }
+	 Par->fold_ustar=atoi(argv[i+1]);
+	 Par->use_fold=1;   /* -foldU implies -fold */
+       }
        if (strcmp(argv[i],"-p")==0)
 	 Par->prior_donor_probs_ind=1;
        if (strcmp(argv[i],"-b")==0) {
@@ -463,6 +474,22 @@ void printInformation(struct files_t *Outfiles,struct infiles_t *Infiles,struct 
     fprintf(Par->out,"Using specified prior donor probs from input file....\n");
   if ((Par->mutation_rate_ind==1) && (Par->mutationALL_em_find==0))
     fprintf(Par->out,"Using specified mutation rates from input file....\n");
+  if (Par->use_fold==1)
+    {
+      /* -fold groups donors by (local substring, parameter class), so it folds the full
+         EM loop exactly for uniform and for fixed per-donor copy_prob (-p) / mutation
+         (-m): -ip (copy proportions), -im (per-pop mutation), -in (N_e), -iM (global
+         mutation). The per-pop MutProb -im produces stays group-constant, so the next
+         iteration folds too. Path sampling (-s) uses a hierarchical sampler over the
+         affine forward (distributionally identical to the dense). Incompatible only with
+         -u (unlinked), which has no copying-path structure to fold. */
+      if (Par->unlinked_ind)
+        {
+          fprintf(Par->out,"ERROR: -fold is incompatible with -u (unlinked). It supports uniform or fixed per-donor copy probabilities (-p) and mutation rates (-m), the EM updates -ip/-im/-in/-iM, and path sampling (-s). Exiting...\n");
+          stop_on_error(1,Par->errormode,Par->err);
+        }
+      fprintf(Par->out,"Using exact block-fold (-fold, Ustar=%d): reproduces the dense painter's chunk counts, chunk lengths, mutation probs and -ip/-im/-in/-iM EM to floating point, the regional bootstrap to chromocombine's c, and -s samples distributionally.\n",Par->fold_ustar);
+    }
   if (Par->copy_prop_em_find==1)
     fprintf(Par->out,"Running E-M to estimate copying proportions....\n");
   if (Par->recom_em_find==1)
@@ -509,6 +536,7 @@ void cleanup(int retval,struct param_t *Par,struct donor_t *Donors,
   freeOutfiles(Outfiles);
   if(Par->vverbose) fprintf(Par->out,"Freeing data\n");
   fflush(Par->out);
+  cpfold_cleanup();   /* release the retained -fold donor panel (no-op if unused) */
   DestroyData(Data);
 
   if(Par->vverbose) fprintf(Par->out,"Freeing ids\n");

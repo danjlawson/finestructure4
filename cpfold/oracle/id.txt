@@ -1,0 +1,5 @@
+TGT TARGET 1
+A1 popA 1
+A2 popA 1
+B1 popB 1
+B2 popB 1

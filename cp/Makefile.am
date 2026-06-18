@@ -7,7 +7,7 @@ OPTIMIZATION = -O3 -Wall -mfpmath=sse -msse -msse2 -funroll-loops -fomit-frame-p
 chromopainter_CXXFLAGS = $(GSL_CFLAGS) $(OPTIMIZATION) -Wall 
 chromopainter_LDFLAGS = $(OPTIMIZATION) 
 chromopainter_LDADD = $(GSL_LIBS)
-chromopainter_SOURCES = ChromoPainterConstants.h ChromoPainterData.h ChromoPainterDonors.h ChromoPainterError.h ChromoPainterInfiles.h ChromoPainterMutEM.h ChromoPainterOutfiles.h ChromoPainterPar.h ChromoPainterReading.h ChromoPainterRecmap.h ChromoPainterSampler.h ChromoPainterData.c ChromoPainterDonors.c ChromoPainterError.c ChromoPainterInfiles.c ChromoPainterMutEM.c ChromoPainterOutfiles.c ChromoPainterPar.c ChromoPainterReading.c ChromoPainterRecmap.c ChromoPainterSampler.c ChromoPainterMain.c
+chromopainter_SOURCES = ChromoPainterConstants.h ChromoPainterData.h ChromoPainterDonors.h ChromoPainterError.h ChromoPainterInfiles.h ChromoPainterMutEM.h ChromoPainterOutfiles.h ChromoPainterPar.h ChromoPainterReading.h ChromoPainterRecmap.h ChromoPainterSampler.h ChromoPainterFold.h ChromoPainterData.c ChromoPainterDonors.c ChromoPainterError.c ChromoPainterInfiles.c ChromoPainterMutEM.c ChromoPainterOutfiles.c ChromoPainterPar.c ChromoPainterReading.c ChromoPainterRecmap.c ChromoPainterSampler.c ChromoPainterFold.c ChromoPainterMain.c
 
 check_SCRIPTS = profilerun.sh
 TESTS = $(check_SCRIPTS)

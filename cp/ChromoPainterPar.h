@@ -37,6 +37,8 @@ extern "C" {
     int allvsall;
     int haploid_ind;
     int unlinked_ind;
+    int use_fold;        /* -fold: exact block-fold chunk counts (O(N*Umean) vs O(N*K)) */
+    int fold_ustar;      /* -fold target groups per block (default 24) */
     int prior_donor_probs_ind;
     int mutation_rate_ind;
     int print_file9_ind;

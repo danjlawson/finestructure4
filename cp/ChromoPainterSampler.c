@@ -1,4 +1,5 @@
 #include "ChromoPainterSampler.h"
+#include "ChromoPainterFold.h"
 #include <omp.h>
 
 #include <time.h>
@@ -55,13 +56,7 @@ double InitialiseForward(signed char * newh, signed char ** existing_h, double *
   double ObsStateProb;
   for (i=0; i < *p_Nhaps; i++)
     {
-      if(newh[0]==9) {
-	ObsStateProb=1.0;
-      }else if(newh[0]==8) {
-	ObsStateProb = (1-SMALL_NUM) * (newh[0] == existing_h[i][0]) + SMALL_NUM * (newh[0] != existing_h[i][0]);
-      }else{
-	ObsStateProb = (1-MutProb_vec[i]) * (newh[0] == existing_h[i][0]) + MutProb_vec[i] * (newh[0] != existing_h[i][0]);
-      }
+      ObsStateProb = cp_emis(newh[0], existing_h[i][0], MutProb_vec[i]);
       prev[i] = copy_probSTART[i]*ObsStateProb;            /* = exp(old Alphamat[0][i]) */
       S0 = S0 + prev[i]*TransProb[0];
     }
@@ -102,13 +97,7 @@ double forwardAlgorithm(signed char * newh, signed char ** existing_h, float ** 
 #pragma omp parallel for private(ObsStateProb) schedule(static)
       for (i=0; i < NH; i++)
 	{
-	  if(newh[locus]==9) {
-	    ObsStateProb=1.0;
-	  }else if(newh[locus]==8) {
-	    ObsStateProb = (1-SMALL_NUM) * (newh[locus] == existing_h[i][locus]) + SMALL_NUM * (newh[locus] != existing_h[i][locus]);
-	  }else{
-	    ObsStateProb = (1-MutProb_vec[i]) * (newh[locus] == existing_h[i][locus]) + MutProb_vec[i] * (newh[locus] != existing_h[i][locus]);
-	  }
+	  ObsStateProb = cp_emis(newh[locus], existing_h[i][locus], MutProb_vec[i]);
 	  /* read the previous normalized column directly -- no exp() */
 	  anew[i] = ObsStateProb*copy_prob[i] + ObsStateProb*(1-TransProb[(locus-1)])*prev[i];
 	}
@@ -205,13 +194,7 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
   for(i=0; i < *p_Nhaps; i++)
     {
       
-	  if(newh[(*p_Nloci-1)]==9) {
-	    ObsStateProb=1.0;
-	  }else if(newh[(*p_Nloci-1)]==8) {
-	    ObsStateProb = (1-SMALL_NUM) * (newh[(*p_Nloci-1)] == existing_h[i][(*p_Nloci-1)]) + SMALL_NUM * (newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
-	  }else{
-	    ObsStateProb = (1-MutProb_vec[i]) * (newh[(*p_Nloci-1)] == existing_h[i][(*p_Nloci-1)]) + MutProb_vec[i] * (newh[(*p_Nloci-1)] != existing_h[i][(*p_Nloci-1)]);
-	  }
+	  ObsStateProb = cp_emis(newh[(*p_Nloci-1)], existing_h[i][(*p_Nloci-1)], MutProb_vec[i]);
 
       BetavecPREV[i] = 0.0;
       Betasum = Betasum + TransProb[(*p_Nloci-2)]*copy_prob[i]*ObsStateProb*exp(BetavecPREV[i]);
@@ -247,21 +230,9 @@ void  backwardAlgorithm(int finalrun,int ndonorpops,int ind_val,double Alphasum,
 #pragma omp parallel for reduction(+:Betasumnew,total_prob,total_regional_chunk_count,expected_chunk_length_sum,sum_prob) reduction(+:ind_snp_sum_vec[:ndonorpops]) reduction(+:exp_copy_pop[:ndonorpops]) private(ObsStateProb,ObsStateProbPREV,total_prob_from_i_to_i,total_prob_to_i_exclude_i,total_prob_from_i_exclude_i,total_prob_from_any_to_any_exclude_i) schedule(static)
       for (i = 0; i < *p_Nhaps; i++)
 	{
-	  if(newh[locus]==9) {
-	    ObsStateProb=1.0;
-	  }else if(newh[locus]==8) {
-	    ObsStateProb = (1-SMALL_NUM) * (newh[locus] == existing_h[i][locus]) + SMALL_NUM * (newh[locus] != existing_h[i][locus]);
-	  }else{
-	    ObsStateProb = (1-MutProb_vec[i]) * (newh[locus] == existing_h[i][locus]) + MutProb_vec[i] * (newh[locus] != existing_h[i][locus]);
-	  }
+	  ObsStateProb = cp_emis(newh[locus], existing_h[i][locus], MutProb_vec[i]);
 
-	  if(newh[locus+1]==9) {
-	    ObsStateProbPREV=1.0;
-	  }else if(newh[locus+1]==8) {
-	    ObsStateProbPREV = (1-SMALL_NUM) * (newh[(locus+1)] == existing_h[i][(locus+1)]) + SMALL_NUM * (newh[(locus+1)] != existing_h[i][(locus+1)]);
-	  }else {
-	    ObsStateProbPREV = (1-MutProb_vec[i]) * (newh[(locus+1)] == existing_h[i][(locus+1)]) + MutProb_vec[i] * (newh[(locus+1)] != existing_h[i][(locus+1)]);
-	  }
+	  ObsStateProbPREV = cp_emis(newh[(locus+1)], existing_h[i][(locus+1)], MutProb_vec[i]);
 	  
 	  BetavecCURRENT[i] = log(exp(Betasum+large_num) + (1-TransProb[locus]) * ObsStateProbPREV*exp(BetavecPREV[i] + large_num)) - large_num;
 	  // Cache the 3 unique exp(...) values that get re-used ~10 times
@@ -392,9 +363,12 @@ double ** sampler(double ** copy_prob_new_mat, signed char * newh, signed char *
   // locus -- consecutive `i` at fixed `locus` are cache-adjacent and
   // vectorizable, and it halves the old double matrix. logScale[t] (double,
   // Nloci of them) carries the per-locus magnitude float can't hold.
-  float * Alphamat_storage = malloc(((size_t)*p_Nloci) * ((size_t)*p_Nhaps) * sizeof(float));
-  float ** ahat = malloc(*p_Nloci * sizeof(float *));
-  double * logScale = malloc(((size_t)*p_Nloci) * sizeof(double));
+  // -fold runs its own O(N*Umean) block fold and never touches the dense forward
+  // matrix, so skip the O(N*K) float ahat (~20 GB for chr1) + logScale entirely.
+  // NULL is safe: the frees below are no-ops on NULL and every read is gated on !use_fold.
+  float * Alphamat_storage = Par->use_fold ? NULL : malloc(((size_t)*p_Nloci) * ((size_t)*p_Nhaps) * sizeof(float));
+  float ** ahat = Par->use_fold ? NULL : malloc(*p_Nloci * sizeof(float *));
+  double * logScale = Par->use_fold ? NULL : malloc(((size_t)*p_Nloci) * sizeof(double));
   double * copy_prob_new = malloc(*p_Nhaps * sizeof(double));
   double * copy_prob_newSTART = malloc(*p_Nhaps * sizeof(double));
   double * Alphasumvec = malloc(*p_Nloci * sizeof(double));
@@ -408,10 +382,11 @@ double ** sampler(double ** copy_prob_new_mat, signed char * newh, signed char *
   if(Par->vverbose) fprintf(Par->out,"        sampler: initializing\n");
 
   // Point each ahat[locus] at its column within Alphamat_storage.
-  for(i=0 ; i< *p_Nloci ; i++)
-    {
-      ahat[i] = Alphamat_storage + ((size_t)i) * ((size_t)*p_Nhaps);
-    }
+  if(!Par->use_fold)
+    for(i=0 ; i< *p_Nloci ; i++)
+      {
+        ahat[i] = Alphamat_storage + ((size_t)i) * ((size_t)*p_Nhaps);
+      }
   for (i=0; i < ndonorpops; i++)
     {
       regional_chunk_count_sum_final[i] = 0.0;
@@ -431,19 +406,94 @@ double ** sampler(double ** copy_prob_new_mat, signed char * newh, signed char *
 
   if(Par->vverbose) fprintf(Par->out,"        sampler: forwards algorithm\n");
       /* FORWARDS ALGORITHM: (Rabiner 1989, p.262) */
-  double Alphasum = forwardAlgorithm(newh, existing_h, ahat, MutProb_vec, p_Nhaps,p_Nloci,copy_prob, copy_probSTART, TransProb, logScale, Par);
+  int finalrun = (run_num == (Par->EMruns-1));
+  double Alphasum = 0.0;
 
-  if(Outfiles->usingFile[2]) fprintf(Outfiles->fout3," %.10lf",Alphasum);
+  if(Par->use_fold){
+    /* -fold: replace the O(N*K) dense forward-backward with the exact O(N*Umean)
+       block fold. It produces the same per-pop chunk counts (coancestry), expected
+       chunk lengths, expected_differences (the -im per-pop / -iM global mutation EM
+       updates), N_e_new (the -in N_e update), the per-pop start term (the -ip
+       copy-proportion update) and the forward log-likelihood, so -fold drives the
+       full -i N -ip -im -in -iM EM loop. Per-pop totals are exact, distributed
+       uniformly within each donor pop so the per-donor output totals are reproduced.
+       The regional bootstrap (.regionchunkcounts / .regionsquaredchunkcounts) and -s
+       path samples are also produced, so -fold is a strict superset of the dense. */
+    if(*p_Nloci < 2){ fprintf(Par->out,"ERROR: -fold requires at least 2 loci. Exiting...\n"); stop_on_error(1,Par->errormode,Par->err); }
+    double *fpp=calloc(ndonorpops,sizeof(double)), *fdiff=calloc(ndonorpops,sizeof(double)), *flen=calloc(ndonorpops,sizeof(double));
+    double *fstart=calloc(ndonorpops,sizeof(double));
+    int *cntp=calloc(ndonorpops,sizeof(int));
+    for(i=0;i<*p_Nhaps;i++) cntp[pop_vec[i]]++;
+    double foldloglik=0.0;
+    /* -d (.transitionprobs, per-locus transition prob) and -b (.copyprobsperlocus,
+       per-locus per-pop copy posterior) are computed natively by the fold; fill them
+       only on the final run when the file is requested (NULL otherwise => skipped). */
+    double *etp_out = (finalrun && Outfiles->usingFile[9]) ? calloc((size_t)*p_Nloci, sizeof(double)) : NULL;
+    double *ecp_out = (finalrun && Outfiles->usingFile[8]) ? calloc((size_t)*p_Nloci*ndonorpops, sizeof(double)) : NULL;
+    /* -s sampling: draw copying paths on the final run via the hierarchical fold
+       sampler. fsamp[s*Nloci+l] = sampled donor index. Samples are distributionally
+       identical to the dense (not byte-identical: a different RNG draw sequence). */
+    int fsTOT = (finalrun && Outfiles->usingFile[0]) ? Par->samplesTOT : 0;
+    int *fsamp = (fsTOT>0) ? malloc((size_t)fsTOT*(*p_Nloci)*sizeof(int)) : NULL;
+    if(fsTOT>0 && !fsamp){ fprintf(Par->out,"Sampler::cpfold error: out of memory for -s samples. Exiting...\n"); stop_on_error(1,Par->errormode,Par->err); }
+    cpfold_perpop(newh, existing_h, *p_Nhaps, *p_Nloci, TransProb, MutProb_vec,
+                  copy_prob, copy_probSTART, pos, lambda, delta, p_rhobar, pop_vec, ndonorpops,
+                  Par->fold_ustar, fpp, fstart, fdiff, flen, &N_e_new, &foldloglik, etp_out, ecp_out,
+                  Par->region_size, regional_chunk_count_sum_final, regional_chunk_count_sum_squared_final, &num_regions,
+                  fsTOT, fsamp);
+    /* match the dense forward's NaN abort: a degenerate recipient that underflows the
+       likelihood must error, not poison the EM with a NaN loglik / chunk counts. */
+    if(isnan(foldloglik)){ fprintf(Par->out,"Sampler::cpfold error: NaN likelihood (emission/transition too low?). Exiting...\n"); stop_on_error(1,Par->errormode,Par->err); }
+    Alphasum = foldloglik;
+    if(finalrun) N_e_new = p_rhobar;   /* final run: report the input N_e like the dense, not the EM estimate */
+    /* write the sampled paths to .samples.out.gz (same format as the dense; the
+       per-recipient "HAP h+1 label" header line is written in the common driver). */
+    if(fsamp){ for(int s=0;s<fsTOT;s++){ gzprintf(*Outfiles->fout1,"%d",s+1);
+        for(int l=0;l<*p_Nloci;l++) gzprintf(*Outfiles->fout1," %d",cond_mat_haplotypes[fsamp[(size_t)s*(*p_Nloci)+l]]+1);
+        gzprintf(*Outfiles->fout1,"\n"); } free(fsamp); }
+    /* forward log-likelihood: same column the dense writes at the matching point
+       (keeps the EMPAR row layout identical). */
+    if(Outfiles->usingFile[2]) fprintf(Outfiles->fout3," %.10lf",foldloglik);
+    /* -d / -b per-locus rows, via the same print functions and the same locus order
+       the dense uses (transitionprobs in genomic order; copyprobsperlocus from the
+       last locus down to the first). */
+    if(etp_out){ printTransitionProb(etp_out, ind_val, *p_Nloci, Outfiles); free(etp_out); }
+    if(ecp_out){ printCopyProbs(&ecp_out[(size_t)(*p_Nloci-1)*ndonorpops], ind_val, pos[*p_Nloci-1], Outfiles, Par);
+                 for(int l=*p_Nloci-2; l>=0; l--) printCopyProbs(&ecp_out[(size_t)l*ndonorpops], ind_val, pos[l], Outfiles, Par);
+                 free(ecp_out); }
+    /* Per-pop totals are exact; we spread each per-pop total uniformly across that pop's
+       donor slots so the per-pop SUM (total_counts, what printSummary / chromocombine
+       consume) is exact. The per-donor split is an internal marshaling detail that never
+       reaches an output file (.chunkcounts is per-donor-pop; all-vs-all makes each donor
+       its own pop). copy_prob_new/START feed -ip: non-final runs report the per-pop
+       posterior (fpp-fstart) and start term (fstart); the final run resets to the prior
+       copy_prob/START, matching the dense's .prop. */
+    for(i=0;i<*p_Nhaps;i++){ int p=pop_vec[i];
+      corrected_chunk_count[i]=(cntp[p]>0)?fpp[p]/cntp[p]:0.0;
+      expected_differences[i]=(cntp[p]>0)?fdiff[p]/cntp[p]:0.0;
+      expected_chunk_length[i]=(cntp[p]>0)?flen[p]/cntp[p]:0.0;
+      if(finalrun){ copy_prob_new[i]=copy_prob[i]; copy_prob_newSTART[i]=copy_probSTART[i]; }
+      else { copy_prob_new[i]=(cntp[p]>0)?(fpp[p]-fstart[p])/cntp[p]:0.0;
+             copy_prob_newSTART[i]=(cntp[p]>0)?fstart[p]/cntp[p]:0.0; } }
+    /* regional_chunk_count_sum_final / _squared_final and num_regions are filled by the
+       fold itself (the regional bootstrap is reproduced). Zero the dead snp_info_measure
+       diagnostic only. */
+    for(i=0;i<ndonorpops;i++){ snp_info_measure[i]=0.0; }
+    free(fpp); free(fdiff); free(flen); free(fstart); free(cntp);
+  } else {
+    Alphasum = forwardAlgorithm(newh, existing_h, ahat, MutProb_vec, p_Nhaps,p_Nloci,copy_prob, copy_probSTART, TransProb, logScale, Par);
 
-  if(Par->vverbose) fprintf(Par->out,"        sampler: backwards algorithm\n");
-  int finalrun= (run_num == (Par->EMruns-1));
-  if(run_num <= (Par->EMruns-1)){
-    backwardAlgorithm(finalrun,ndonorpops,ind_val,Alphasum,p_rhobar,&N_e_new,newh,existing_h,ahat,logScale,lambda,delta,MutProb_vec,p_Nhaps,p_Nloci,copy_prob,copy_prob_new,copy_prob_newSTART, corrected_chunk_count, expected_chunk_length, expected_differences,regional_chunk_count_sum_final,regional_chunk_count_sum_squared_final, &num_regions, copy_probSTART, TransProb, pop_vec,pos,snp_info_measure,Outfiles,Par);
+    if(Outfiles->usingFile[2]) fprintf(Outfiles->fout3," %.10lf",Alphasum);
+
+    if(Par->vverbose) fprintf(Par->out,"        sampler: backwards algorithm\n");
+    if(run_num <= (Par->EMruns-1)){
+      backwardAlgorithm(finalrun,ndonorpops,ind_val,Alphasum,p_rhobar,&N_e_new,newh,existing_h,ahat,logScale,lambda,delta,MutProb_vec,p_Nhaps,p_Nloci,copy_prob,copy_prob_new,copy_prob_newSTART, corrected_chunk_count, expected_chunk_length, expected_differences,regional_chunk_count_sum_final,regional_chunk_count_sum_squared_final, &num_regions, copy_probSTART, TransProb, pop_vec,pos,snp_info_measure,Outfiles,Par);
+    }
   }
 
-  //////////////////////////////// 
+  ////////////////////////////////
       /* print-out samples if we've done enough iterations: */
-   if (finalrun)
+   if (finalrun && !Par->use_fold)   /* -fold has no dense ahat/logScale to sample from; it draws its paths in its own hook above */
      {
        if(Par->vverbose) fprintf(Par->out,"        sampler: printing.\n");
 
