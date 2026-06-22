@@ -7,7 +7,10 @@ AUTOMAKE_OPTIONS = subdir-objects
 bin_PROGRAMS = fs mixPainter
 
 ##OPTIMIZATION = -O3 -lm -Wall -Wno-write-strings -mfpmath=sse -msse -msse2 -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fopenmp -Wno-unused-variable $(OPENMP_CXXFLAGS)
-OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -Wno-unused-variable -fopenmp $(OPENMP_CXXFLAGS)
+## -fno-math-errno: the code never reads errno after a libm call, so dropping
+## the errno write lets the vectorizer emit libmvec exp()/log() for the
+## ChromoPainter forward/backward inner loops. Output is unchanged.
+OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fno-math-errno -Wno-unused-variable -fopenmp $(OPENMP_CXXFLAGS)
 ## For mac: may need to add -Wl,-ld_classic
 ## For others: may need to remove them?
 fs_CXXFLAGS = $(OPTIMIZATION) -Wall -Wl,-ld_classic ##  -fsanitize=leak
