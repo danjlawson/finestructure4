@@ -2,6 +2,7 @@ AC_INIT([fs], [4.1.0], [dan.lawson@bristol.ac.uk],
              [fs], [http://www.paintmychromosomes.com])
 AC_PREREQ([2.59])
 AC_CONFIG_AUX_DIR(config)
+AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([foreign 1.10 -Wall no-define])
 AC_CONFIG_HEADERS([config.h])
 AC_LANG(C++)
@@ -23,6 +24,15 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AC_OPENMP
 AC_SUBST(AM_CXXFLAGS,"$OPENMP_CXXFLAGS")
+
+# The Apple linker (Xcode 15+) needs -ld_classic; GNU ld rejects it (it reads
+# -ld_classic as a request to link libd_classic and fails to find it). Set the
+# flag only on macOS so non-Apple hosts link out of the box.
+case "$host_os" in
+  darwin*) LD_CLASSIC="-Wl,-ld_classic" ;;
+  *)       LD_CLASSIC="" ;;
+esac
+AC_SUBST([LD_CLASSIC])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

@@ -11,9 +11,9 @@ bin_PROGRAMS = fs mixPainter
 ## the errno write lets the vectorizer emit libmvec exp()/log() for the
 ## ChromoPainter forward/backward inner loops. Output is unchanged.
 OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fno-math-errno -Wno-unused-variable -fopenmp $(OPENMP_CXXFLAGS)
-## For mac: may need to add -Wl,-ld_classic
-## For others: may need to remove them?
-fs_CXXFLAGS = $(OPTIMIZATION) -Wall -Wl,-ld_classic ##  -fsanitize=leak
+## $(LD_CLASSIC) is -Wl,-ld_classic on macOS (the Xcode 15+ linker needs the
+## classic linker) and empty elsewhere; configure sets it from the host type.
+fs_CXXFLAGS = $(OPTIMIZATION) -Wall $(LD_CLASSIC) ##  -fsanitize=leak
 ## The ChromoPainter inner-loop OpenMP pragmas live in *.c files, so the
 ## same -fopenmp + -O3 + vectorize flags need to flow into the C compile
 ## rule, not just the C++ one. Without fs_CFLAGS, the .c sources compile
