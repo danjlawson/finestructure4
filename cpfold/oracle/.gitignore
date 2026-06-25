@@ -1,0 +1,4 @@
+# fs run outputs (the harness writes to a tmpdir; ignore stray manual runs)
+*.out
+*.out.gz
+*.cp.*

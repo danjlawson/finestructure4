@@ -25,6 +25,8 @@ struct param_t *DefaultParam() {
   Par->allvsall=0;
   Par->haploid_ind=0;
   Par->unlinked_ind=0;
+  Par->use_fold=0;
+  Par->fold_ustar=24;
   Par->prior_donor_probs_ind=0;
   Par->mutation_rate_ind=0;
   Par->print_file9_ind=0;

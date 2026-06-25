@@ -23,6 +23,8 @@ extern "C" {
        -k <double>  specify number of expected chunks to define a 'region' (default=100)\n\
        -j  specify that individuals are haploid\n\
        -u  specify that data are unlinked\n\
+       -fold  use the exact O(N*Umean) block fold in place of the O(N*K) dense forward-backward (lower time and memory); reproduces the dense chunk counts, lengths, mutation and -ip/-im/-in/-iM EM to floating point, the regional bootstrap to chromocombine's c, and -s samples distributionally. Incompatible with -u.\n\
+       -foldU <int>  as -fold, with a target of <int> substring groups per block (default 24; larger is closer to the dense in work and memory)\n\
        -a <a_1> <a_2>  condition individuals a_1 through a_2 on every other individual (use '-a 0 0' to do all inds)\n\
        -d create the file '.transitionprobs.out.gz' containing the probability that there was a recombination event between each locus\n\
        -b  print-out zipped file with suffix '.copyprobsperlocus.out' containing prob each recipient copies each donor at every SNP (note: file can be quite large)\n\
