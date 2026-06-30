@@ -727,7 +727,12 @@ int loglik(struct copyvec_t *Copyvec, struct donor_t *Donors, struct data_t *Dat
 	}
       }
 
-      int * allelic_type_count_vec=getallelic_type_count_vec(Data);
+      /* getallelic_type_count_vec(Data) is an O(N*K) per-SNP allele-count scan whose
+         result sampler() never reads (cf. its own comment "this is NOT ever used") -
+         it was ~15-19% of a chr-scale paint. Skip the dead scan; sampler ignores the
+         argument (free(NULL) below is a no-op). The function is retained for the day
+         the default-mutation-rate use it was written for is wired up. */
+      int * allelic_type_count_vec=NULL;
 
       fprintf(Par->out,"Processing Recipient number %d, named %s\n",m+1,Donors->reciplabels[m]);
       if(Outfiles->usingFile[2]) fprintf(Outfiles->fout3,"EMPAR for %s\n",Donors->reciplabels[m]);
