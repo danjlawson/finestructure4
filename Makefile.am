@@ -1,6 +1,7 @@
 ## CC = /opt/homebrew/opt/llvm/bin/clang
 ## CXX = $(CC)++
 
+AM_CFLAGS = -std=gnu11
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 
@@ -10,22 +11,38 @@ bin_PROGRAMS = fs mixPainter
 ## -fno-math-errno: the code never reads errno after a libm call, so dropping
 ## the errno write lets the vectorizer emit libmvec exp()/log() for the
 ## ChromoPainter forward/backward inner loops. Output is unchanged.
-OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fno-math-errno -Wno-unused-variable -fopenmp $(OPENMP_CXXFLAGS)
+## OPTIMIZATION = -O3 -Wall -Wno-write-strings -funroll-loops -fomit-frame-pointer -ftree-vectorize -funsafe-math-optimizations -fno-math-errno -Wno-unused-variable -fopenmp $(OPENMP_CXXFLAGS)
+
+OPTIMIZATION = -O3 -Wall \
+   -Wno-write-strings \
+   -funroll-loops \
+   -fomit-frame-pointer \
+   -ftree-vectorize \
+   -funsafe-math-optimizations \
+   -fno-math-errno \
+   -Wno-unused-variable
+
+fs_CXXFLAGS = $(OPTIMIZATION) $(OPENMP_CXXFLAGS)
+mixPainter_CXXFLAGS = $(OPTIMIZATION) $(OPENMP_CXXFLAGS)
+
+fs_LDFLAGS = $(OPENMP_CXXFLAGS) -lm
+mixPainter_LDFLAGS = $(OPENMP_CXXFLAGS)
+
 ## $(LD_CLASSIC) is -Wl,-ld_classic on macOS (the Xcode 15+ linker needs the
 ## classic linker) and empty elsewhere; configure sets it from the host type.
-fs_CXXFLAGS = $(OPTIMIZATION) -Wall $(LD_CLASSIC) ##  -fsanitize=leak
+## fs_CXXFLAGS = $(OPTIMIZATION) -Wall $(LD_CLASSIC) ##  -fsanitize=leak
 ## The ChromoPainter inner-loop OpenMP pragmas live in *.c files, so the
 ## same -fopenmp + -O3 + vectorize flags need to flow into the C compile
 ## rule, not just the C++ one. Without fs_CFLAGS, the .c sources compile
 ## with the autoconf default `CFLAGS = -g -O2` (no -fopenmp, no -O3), and
 ## the pragmas are silently no-ops. Mirroring fs_CXXFLAGS keeps the two
 ## languages in lockstep.
-fs_CFLAGS = $(OPTIMIZATION) -Wall ##  -fsanitize=leak
-fs_LDFLAGS = $(OPTIMIZATION) -lm -static-libstdc++
+## fs_CFLAGS = $(OPTIMIZATION) -Wall ##  -fsanitize=leak
+## fs_LDFLAGS = $(OPTIMIZATION) -lm -static-libstdc++
 
-mixPainter_CXXFLAGS = $(OPTIMIZATION) -Wall
-mixPainter_CFLAGS = $(OPTIMIZATION) -Wall
-mixPainter_LDFLAGS = $(OPTIMIZATION) -static-libstdc++
+## mixPainter_CXXFLAGS = $(OPTIMIZATION) -Wall
+## mixPainter_CFLAGS = $(OPTIMIZATION) -Wall
+## mixPainter_LDFLAGS = $(OPTIMIZATION) -static-libstdc++
 
 all_SOURCES = fsproject.h fsproject.cpp fssettings.h fssettings.cpp fsutils.h fsutils.cpp fsparam.h fsparam.cpp fscmds.h fscmds.cpp fsdonor.cpp fsdonor.h finestructure/fines.h alphanum.hpp fsconstants.h cp/ChromoPainterReading.h cp/ChromoPainterConstants.h cp/ChromoPainterError.h cp/ChromoPainterData.h  cp/ChromoPainterMutEM.h cp/ChromoPainterPar.h cp/ChromoPainterRecmap.h cp/ChromoPainterDonors.h cp/ChromoPainterOutfiles.h cp/ChromoPainterInfiles.h cp/ChromoPainterSampler.h cp/ChromoPainterFold.h cp/ChromoPainterReading.c cp/ChromoPainterError.c cp/ChromoPainterData.c  cp/ChromoPainterMutEM.c cp/ChromoPainterPar.c cp/ChromoPainterRecmap.c cp/ChromoPainterDonors.c cp/ChromoPainterOutfiles.c cp/ChromoPainterInfiles.c cp/ChromoPainterSampler.c cp/ChromoPainterFold.c  cp/adler32.c cp/compress.c cp/crc32.c cp/crc32.h cp/deflate.c cp/deflate.h cp/gzclose.c cp/gzguts.h cp/gzlib.c cp/gzread.c cp/gzwrite.c cp/infback.c cp/inffast.c cp/inffast.h cp/inffixed.h cp/inflate.c cp/inflate.h cp/inftrees.c cp/inftrees.h cp/trees.c cp/trees.h cp/uncompr.c cp/zconf.h cp/zlib.h cp/zutil.c cp/zutil.h finestructure/safegetline.h finestructure/data.h finestructure/fsxml.h finestructure/state.h finestructure/prior.h finestructure/node.h finestructure/inf1.h finestructure/infadmixture.h finestructure/infconcordance.h  finestructure/infextract.h finestructure/infextract2.h finestructure/infextract3.h finestructure/infextract4.h finestructure/infextract5.h finestructure/infextractdonors.h finestructure/infmcmc.h finestructure/fines.h finestructure/finesfunctions.h finestructure/rng.h finestructure/safegetline.cpp finestructure/data.cpp finestructure/fsxml.cpp finestructure/state.cpp finestructure/prior.cpp finestructure/node.cpp finestructure/inf1.cpp finestructure/infadmixture.cpp finestructure/infconcordance.cpp finestructure/infextract.cpp finestructure/infextract2.cpp finestructure/infextract3.cpp finestructure/infextract4.cpp finestructure/infextract5.cpp finestructure/infextractdonors.cpp finestructure/infmcmc.cpp finestructure/finesfunctions.cpp finestructure/fines.cpp finestructure/rng.cpp chromocombine/ChromoCombine.cpp chromocombine/ChromoCombineFuns.cpp chromocombine/ChromoCombineFuns.h chromocombine/ChromoCombine.h
 fs_SOURCES = fs.cpp $(all_SOURCES)

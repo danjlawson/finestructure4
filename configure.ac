@@ -5,9 +5,46 @@ AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([foreign 1.10 -Wall no-define])
 AC_CONFIG_HEADERS([config.h])
-AC_LANG(C++)
+
+AC_MSG_NOTICE([Looking for a GNU C++ compiler])
+
+case "$host_os" in
+darwin*)
+
+    AC_MSG_NOTICE([Searching for an OpenMP-capable GNU compiler])
+
+    if test -x "$srcdir/whereisglob"; then
+
+        for c in `$srcdir/whereisglob 'g++*' | sort -V -r`; do
+            AC_MSG_NOTICE([Trying g++ compiler $c])
+
+            if echo 'int main(){return 0;}' |
+                $c -fopenmp -x c++ - -o conftest >/dev/null 2>&1
+            then
+                CXX="$c"
+                AC_MSG_NOTICE([Using C++ compiler: $c])
+                break
+            fi
+        done
+
+        for c in `$srcdir/whereisglob 'gcc*' | sort -V -r`; do
+            AC_MSG_NOTICE([Trying gcc compiler $c])
+
+            if echo 'int main(){return 0;}' |
+                $c -fopenmp -x c - -o conftest >/dev/null 2>&1
+            then
+                CC="$c"
+                AC_MSG_NOTICE([Using C compiler: $c])
+                break
+            fi
+        done
+    fi
+    ;;
+esac
+
 AC_PROG_CXX
 AC_PROG_CC # Perhaps causes errors in some places, but should be fine
+CFLAGS="$CFLAGS -std=gnu11"
 
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
@@ -28,6 +65,12 @@ AC_SUBST(AM_CXXFLAGS,"$OPENMP_CXXFLAGS")
 # The Apple linker (Xcode 15+) needs -ld_classic; GNU ld rejects it (it reads
 # -ld_classic as a request to link libd_classic and fails to find it). Set the
 # flag only on macOS so non-Apple hosts link out of the box.
+
+AC_OPENMP(
+  [AC_DEFINE(HAVE_OPENMP,1,[OpenMP available])],
+  [AC_MSG_WARN([OpenMP not found; building single-threaded version])]
+)
+
 case "$host_os" in
   darwin*) LD_CLASSIC="-Wl,-ld_classic" ;;
   *)       LD_CLASSIC="" ;;
