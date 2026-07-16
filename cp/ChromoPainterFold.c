@@ -391,8 +391,22 @@ void cpfold_perpop(signed char *newh, signed char **existing_h, int nhaps, int n
       free(rep); }
     /* locus-major donor buffer from existing_h (hap-major), rebuilt every call. */
     donors=cf_xmalloc((size_t)N*K);
-    for(int i=0;i<K;i++){ signed char *row=existing_h[i];
-        for(int l=0;l<N;l++) donors[(size_t)l*K+i]=(uint8_t)row[l]; }
+    /* hap-major existing_h -> locus-major donors. Cache-blocked: parallelize over
+       disjoint locus tiles (no false sharing on the shared donors buffer) and tile the
+       donor dimension so writes to donors[l*K + ib..ie] land contiguously (one cache
+       line filled at a time) instead of strided by K. The naive strided-write transpose
+       was ~half the chr-scale fold wall-clock. Output is byte-identical. */
+    /* Tile sizes: TI=64 is one cache line, so the strided donor writes fill whole
+       lines; TL=512 keeps the read block (TI*TL = 32 KiB) inside L1. Wall-clock is
+       flat across TL in 256..4096 on tested hardware (a modern L2 holds the block at
+       any of these), so this is a robustness choice sized to the smallest common L1,
+       not a machine-tuned constant. */
+    { const int TL=512, TI=64;
+#pragma omp parallel for schedule(static)
+      for(int lb=0; lb<N; lb+=TL){ int le=(lb+TL<N)?lb+TL:N;
+        for(int ib=0; ib<K; ib+=TI){ int ie=(ib+TI<K)?ib+TI:K;
+          for(int l=lb; l<le; l++){ uint8_t *out=donors+(size_t)l*K;
+            for(int i=ib; i<ie; i++) out[i]=(uint8_t)existing_h[i][l]; } } } }
     uint8_t *rh=cf_xmalloc(N); for(int l=0;l<N;l++) rh[l]=(uint8_t)newh[l];
 
     Groups Gr=build_groups_adaptive(Ustar);
